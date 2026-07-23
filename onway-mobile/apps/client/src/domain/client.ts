@@ -187,6 +187,22 @@ function hourlyLabels(length: number) {
   return Array.from({ length }, (_, index) => `${String(index).padStart(2, '0')}h`);
 }
 
+/**
+ * Agrega a série diária (`custom`) em 12 totais mensais reais. Usado no modo Ano
+ * quando a série `ano` não vem preenchida — soma valores reais por mês, sem
+ * inventar nada. `startParam` (YYYY-MM-DD) indica o 1º de janeiro do ano.
+ */
+function monthlyFromDaily(daily: number[], startParam?: string): number[] {
+  const months = new Array<number>(12).fill(0);
+  if (!daily.length) return months;
+  const year = startParam ? Number.parseInt(startParam.slice(0, 4), 10) : new Date().getFullYear();
+  daily.forEach((value, index) => {
+    const date = new Date(year, 0, 1 + index);
+    if (date.getFullYear() === year) months[date.getMonth()] += numeric(value);
+  });
+  return months;
+}
+
 function selectDayHistory(response: PlantHistoryResponse, targetDate?: string) {
   const days = response.historico.diasHorarios;
   if (!days.length) return undefined;
@@ -218,15 +234,19 @@ export function toGenerationHistory(response: PlantHistoryResponse, period: Hist
     labels = dayValues.length
       ? hourlyLabels(values.length)
       : values.map((_, index) => response.historico.customLabels[index] || String(index + 1));
+  } else if (period === 'year') {
+    // O modo Ano mostra sempre 12 meses. Usa a série `ano` quando preenchida;
+    // caso contrário, agrega a série diária em totais mensais reais (nunca a
+    // série diária crua, que traria centenas de barras).
+    const yearly = response.historico.ano.map(numeric);
+    values = yearly.some((value) => value > 0) ? yearly : monthlyFromDaily(customValues, targetDate);
+    labels = values.map((_, index) => response.historico.anoLabels[index] || String(index + 1));
   } else if (hasCustomRange) {
     values = customValues;
     labels = values.map((_, index) => response.historico.customLabels[index] || String(index + 1));
   } else if (period === 'month') {
     values = response.historico.mes.map(numeric);
     labels = values.map((_, index) => response.historico.mesLabels[index] || String(index + 1));
-  } else if (period === 'year') {
-    values = response.historico.ano.map(numeric);
-    labels = values.map((_, index) => response.historico.anoLabels[index] || String(index + 1));
   } else {
     values = response.historico.semana.map(numeric);
     labels = values.map((_, index) => response.historico.semanaLabels[index] || String(index + 1));

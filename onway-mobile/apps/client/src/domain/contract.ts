@@ -27,6 +27,7 @@ export type Contract = {
   kwp: number | null;
   kwpLabel: string;
   activationLabel: string;
+  activationDate: Date | null;
   services: ContractService[];
   plantNames: string[];
 };
@@ -99,6 +100,12 @@ function formatDate(value: string | null | undefined) {
   });
 }
 
+function parseDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
 function titleize(value: string) {
   return value
     .split(/[\s_-]+/)
@@ -158,6 +165,7 @@ export function toContract(api: ApiContract): Contract {
     kwp,
     kwpLabel: kwp === null ? '—' : `${kwp.toLocaleString('pt-BR')} kWp`,
     activationLabel: formatDate(api.dataAtivacao) ?? '—',
+    activationDate: parseDate(api.dataAtivacao),
     services,
     plantNames: (api.usinas ?? []).map((plant) => normalizeText(plant.nome)).filter(Boolean),
   };

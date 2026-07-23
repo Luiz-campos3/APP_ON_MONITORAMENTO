@@ -3,140 +3,32 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { GenerationChart } from '@/components/generation-chart';
+import { GenerationHistoryCard } from '@/components/generation/generation-history-card';
 import { Screen } from '@/components/screen';
 import { SymbolIcon } from '@/components/symbol-icon';
 import { Button, Card } from '@/components/ui';
 import { brand, radius, spacing } from '@/constants/theme';
 import { useOnWayTheme } from '@/contexts/theme-context';
-import { generationPercentage, statusLabel, type HistoryPeriod } from '@/domain/client';
+import { generationPercentage, statusLabel } from '@/domain/client';
 import type { Contract, InvoiceSummary } from '@/domain/contract';
+import { formatDateParam, startOfDay } from '@/domain/generation-calculations';
 import { usePlantHistory } from '@/hooks/use-plant-history';
 import { usePlantContract } from '@/hooks/use-plant-contract';
 import { usePlantInvoices } from '@/hooks/use-plant-invoices';
 import { usePlant } from '@/hooks/use-plant';
 
-const PERIOD_OPTIONS: { value: HistoryPeriod; label: string }[] = [
-  { value: 'day', label: 'Dia' },
-  { value: 'week', label: 'Semana' },
-  { value: 'month', label: 'Mês' },
-  { value: 'year', label: 'Ano' },
-];
-
-function startOfDay(date: Date) {
-  const next = new Date(date);
-  next.setHours(0, 0, 0, 0);
-  return next;
-}
-
-function addDays(date: Date, amount: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + amount);
-  return next;
-}
-
-function addMonths(date: Date, amount: number) {
-  const next = new Date(date);
-  next.setMonth(next.getMonth() + amount);
-  return next;
-}
-
-function addYears(date: Date, amount: number) {
-  const next = new Date(date);
-  next.setFullYear(next.getFullYear() + amount);
-  return next;
-}
-
-function formatDateParam(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function sameDay(a: Date, b: Date) {
-  return formatDateParam(a) === formatDateParam(b);
-}
-
-function getHistoryRange(period: HistoryPeriod, anchorDate: Date) {
-  const anchor = startOfDay(anchorDate);
-  if (period === 'day') return { startDate: anchor, endDate: anchor };
-
-  if (period === 'week') {
-    return { startDate: addDays(anchor, -6), endDate: anchor };
-  }
-
-  if (period === 'month') {
-    const startDate = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-    const endDate = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
-    return { startDate, endDate };
-  }
-
-  return {
-    startDate: new Date(anchor.getFullYear(), 0, 1),
-    endDate: new Date(anchor.getFullYear(), 11, 31),
-  };
-}
-
-function shiftAnchor(period: HistoryPeriod, anchorDate: Date, direction: -1 | 1) {
-  if (period === 'day') return addDays(anchorDate, direction);
-  if (period === 'week') return addDays(anchorDate, direction * 7);
-  if (period === 'month') return addMonths(anchorDate, direction);
-  return addYears(anchorDate, direction);
-}
-
-function periodSubtitle(period: HistoryPeriod, startDate: Date, endDate: Date, today: Date) {
-  const date = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
-  const month = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' });
-
-  if (period === 'day') {
-    if (sameDay(startDate, today)) return 'Hoje';
-    if (sameDay(startDate, addDays(today, -1))) return 'Ontem';
-    return date.format(startDate);
-  }
-
-  if (period === 'month') {
-    return month.format(startDate);
-  }
-
-  if (period === 'year') {
-    return String(startDate.getFullYear());
-  }
-
-  return `${date.format(startDate)} – ${date.format(endDate)}`;
-}
-
-function averageLabel(period: HistoryPeriod) {
-  if (period === 'day') return 'Média por hora';
-  if (period === 'year') return 'Média mensal';
-  return 'Média diária';
-}
-
 export default function PlantDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useOnWayTheme();
-  const [historyPeriod, setHistoryPeriod] = useState<HistoryPeriod>('week');
-  const [historyAnchor, setHistoryAnchor] = useState(() => startOfDay(new Date()));
   const { data: plant, loading, error, reload } = usePlant(id);
+  // Congela a rolagem da página enquanto o gráfico está em arraste horizontal.
+  const [historyDragging, setHistoryDragging] = useState(false);
   const today = useMemo(() => startOfDay(new Date()), []);
-  const historyRange = useMemo(() => {
-    const { startDate, endDate } = getHistoryRange(historyPeriod, historyAnchor);
-    const safeEndDate = endDate > today ? today : endDate;
-
-    return {
-      period: historyPeriod,
-      start: formatDateParam(startDate),
-      end: formatDateParam(safeEndDate),
-      startDate,
-      endDate: safeEndDate,
-    };
-  }, [historyAnchor, historyPeriod, today]);
   const todayRange = useMemo(() => {
     const todayParam = formatDateParam(today);
     return { period: 'day' as const, start: todayParam, end: todayParam };
   }, [today]);
-  const history = usePlantHistory(plant?.id, historyRange);
   const todayHistory = usePlantHistory(plant?.id, todayRange);
   const contract = usePlantContract(plant?.id);
   const invoices = usePlantInvoices(plant?.id);
@@ -148,12 +40,6 @@ export default function PlantDetailScreen() {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [invoices.reload]),
   );
-  const canGoForward = shiftAnchor(historyPeriod, historyAnchor, 1) <= today;
-
-  const changePeriod = (period: HistoryPeriod) => {
-    setHistoryPeriod(period);
-    setHistoryAnchor(today);
-  };
 
   if (loading && !plant) {
     return (
@@ -182,7 +68,7 @@ export default function PlantDetailScreen() {
   const generationToday = todayHistory.data?.total ?? plant.generationToday;
 
   return (
-    <Screen>
+    <Screen scrollEnabled={!historyDragging}>
       <View style={styles.header}>
         <Pressable accessibilityLabel="Voltar" onPress={() => router.back()} style={[styles.headerButton, { backgroundColor: colors.surface }]}>
           <SymbolIcon ios="chevron.left" android="arrow_back" color={colors.text} size={21} fallback="‹" />
@@ -229,64 +115,7 @@ export default function PlantDetailScreen() {
         <SymbolIcon ios="chevron.right" android="chevron_right" color={colors.textSecondary} size={17} fallback="›" />
       </Pressable>
 
-      <Card style={styles.chartCard}>
-        <View style={styles.chartHeader}>
-          <View>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>Histórico de geração</Text>
-            <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-              {periodSubtitle(historyPeriod, historyRange.startDate, historyRange.endDate, today)}
-            </Text>
-          </View>
-          <View style={styles.periodNavigation}>
-            <Pressable
-              accessibilityLabel="Período anterior"
-              onPress={() => setHistoryAnchor((date) => shiftAnchor(historyPeriod, date, -1))}
-              style={({ pressed }) => [styles.periodArrow, { backgroundColor: colors.surfaceMuted, opacity: pressed ? 0.72 : 1 }]}>
-              <SymbolIcon ios="chevron.left" android="chevron_left" color={colors.text} size={17} fallback="‹" />
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Próximo período"
-              disabled={!canGoForward}
-              onPress={() => setHistoryAnchor((date) => shiftAnchor(historyPeriod, date, 1))}
-              style={({ pressed }) => [styles.periodArrow, { backgroundColor: colors.surfaceMuted, opacity: !canGoForward ? 0.36 : pressed ? 0.72 : 1 }]}>
-              <SymbolIcon ios="chevron.right" android="chevron_right" color={colors.text} size={17} fallback="›" />
-            </Pressable>
-          </View>
-        </View>
-        <View style={[styles.periodTabs, { backgroundColor: colors.surfaceMuted }]}>
-          {PERIOD_OPTIONS.map((option) => {
-            const active = option.value === historyPeriod;
-            return (
-              <Pressable
-                key={option.value}
-                accessibilityRole="button"
-                accessibilityLabel={`Ver histórico por ${option.label.toLowerCase()}`}
-                onPress={() => changePeriod(option.value)}
-                style={[styles.periodTab, active && { backgroundColor: colors.accent }]}>
-                <Text style={[styles.periodTabText, { color: active ? brand.white : colors.textSecondary }]}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        {history.loading ? <ActivityIndicator color={colors.accent} style={styles.chartLoading} /> : null}
-        {history.data?.values.length ? (
-          <GenerationChart
-            values={history.data.values}
-            labels={history.data.labels}
-            height={260}
-            maxVisibleLabels={historyPeriod === 'day' ? 6 : 7}
-            type={historyPeriod === 'day' ? 'line' : 'bar'}
-          />
-        ) : null}
-        {history.error ? <Text style={[styles.chartMessage, { color: brand.danger }]}>{history.error}</Text> : null}
-        {!history.loading && !history.error && !history.data?.values.length ? <Text style={[styles.chartMessage, { color: colors.textSecondary }]}>Sem histórico disponível.</Text> : null}
-        <View style={[styles.chartSummary, { backgroundColor: colors.surfaceMuted }]}>
-          <Text style={[styles.chartSummaryText, { color: colors.textSecondary }]}>{averageLabel(historyPeriod)}</Text>
-          <Text style={[styles.chartSummaryValue, { color: colors.text }]}>{history.data ? `${history.data.average.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kWh` : '—'}</Text>
-        </View>
-      </Card>
+      <GenerationHistoryCard plantId={plant.id} today={today} minDate={contract.data?.activationDate ?? null} onDragStateChange={setHistoryDragging} />
 
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Dados técnicos</Text>
       <Card style={styles.infoCard}>
@@ -470,20 +299,6 @@ const styles = StyleSheet.create({
   checkupText: { flex: 1, gap: 2 },
   checkupTitle: { fontSize: 14, fontWeight: '800' },
   checkupSubtitle: { fontSize: 11 },
-  chartCard: { marginTop: spacing.md },
-  chartLoading: { minHeight: 260 },
-  chartMessage: { minHeight: 170, paddingTop: spacing.xxxl, textAlign: 'center', fontSize: 11 },
-  chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  cardTitle: { fontSize: 16, fontWeight: '800' },
-  cardSubtitle: { fontSize: 11, marginTop: 4 },
-  periodNavigation: { flexDirection: 'row', gap: 8 },
-  periodArrow: { width: 34, height: 34, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  periodTabs: { borderRadius: radius.pill, flexDirection: 'row', padding: 4, marginBottom: spacing.lg },
-  periodTab: { flex: 1, minHeight: 32, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  periodTabText: { fontSize: 10, fontWeight: '800' },
-  chartSummary: { borderRadius: 12, padding: 11, flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  chartSummaryText: { fontSize: 11 },
-  chartSummaryValue: { fontSize: 11, fontWeight: '800' },
   sectionTitle: { fontSize: 18, fontWeight: '800', marginTop: spacing.xxl, marginBottom: spacing.md },
   infoCard: { paddingVertical: 1 },
   infoRow: { minHeight: 61, flexDirection: 'row', alignItems: 'center', gap: 11 },
