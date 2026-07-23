@@ -1,0 +1,32 @@
+# === Arquivos grandes / não versionáveis ===
+Manual de Marca.pdf
+tmp/
+
+# === Dependências e artefatos gerados ===
+node_modules/
+**/node_modules/
+.expo/
+dist/
+web-build/
+build/
+
+# Pastas nativas geradas pelo Expo (regeneráveis com `expo prebuild` / `expo run`)
+**/ios/
+**/android/
+
+# === Segredos e credenciais (reforço; o app também ignora) ===
+.env
+.env.*
+!.env.example
+*.p12
+*.p8
+*.pem
+*.key
+*.jks
+*.keystore
+*.mobileprovision
+
+# === Sistema ===
+.DS_Store
+**/.DS_Store
+*.log

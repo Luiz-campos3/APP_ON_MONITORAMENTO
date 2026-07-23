@@ -1,0 +1,22 @@
+[Unit]
+Description=OnWay Cliente - Expo Metro (homologacao)
+Wants=network-online.target tailscaled.service
+After=network-online.target tailscaled.service
+
+[Service]
+Type=simple
+User=onway_server
+Group=onway_server
+WorkingDirectory=/home/onway_server/onway-mobile/apps/client
+Environment=HOME=/home/onway_server
+Environment=NODE_ENV=development
+Environment=EXPO_NO_TELEMETRY=1
+Environment=REACT_NATIVE_PACKAGER_HOSTNAME=100.110.44.76
+ExecStart=/usr/bin/npm run tailscale
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target
