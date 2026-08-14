@@ -1,5 +1,10 @@
 # Plano de Implantação — Gaps do OnWay Cliente
 
+> **SUBSTITUÍDO em 13/08/2026 por [`PLANO_IMPLANTACAO_V2.md`](PLANO_IMPLANTACAO_V2.md).**
+> A migração para a API pública (commit `34634c4`) entregou parte deste plano e
+> mudou premissas (ex.: recuperação de senha saiu do backlog por decisão de
+> segurança). Este arquivo permanece como registro histórico da análise.
+
 **Data da análise:** 13/08/2026
 **Base analisada:** commit `e1ff338` (apps/client, Expo SDK 54, RN 0.81.5)
 **Referências:** `PLANO_DESENVOLVIMENTO_MOBILE_ONWAY.md` (plano macro) e `INTEGRACAO_BACKEND.md` (contrato da API `/api/v3/app`)
