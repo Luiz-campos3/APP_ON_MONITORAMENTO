@@ -11,7 +11,7 @@ import { brand, radius, spacing } from '@/constants/theme';
 import { useClientData } from '@/contexts/client-data-context';
 import { useOnWayTheme } from '@/contexts/theme-context';
 import { invoiceReferenceLabel } from '@/domain/contract';
-import { apiErrorMessage, mobileApi, type InvoiceUpload } from '@/services/mobile-api';
+import { apiErrorMessage, MAX_UPLOAD_BYTES, mobileApi, type InvoiceUpload } from '@/services/mobile-api';
 
 function monthOptions(count = 12) {
   const now = new Date();
@@ -72,6 +72,12 @@ export default function NewInvoiceScreen() {
     if (result.canceled || !result.assets?.length) return;
 
     const asset = result.assets[0];
+    // A borda de produção recusa uploads acima de 25 MB (413); avisamos antes de enviar.
+    if (typeof asset.size === 'number' && asset.size > MAX_UPLOAD_BYTES) {
+      setOcrOk(false);
+      setOcrNote('O arquivo passa do limite de 25 MB. Envie um PDF menor ou uma foto comprimida, ou preencha manualmente.');
+      return;
+    }
     const file: InvoiceUpload = {
       uri: asset.uri,
       name: asset.name || 'fatura',
@@ -167,7 +173,9 @@ export default function NewInvoiceScreen() {
         <SymbolIcon ios={reading ? 'hourglass' : 'doc.viewfinder'} android={reading ? 'hourglass_empty' : 'document_scanner'} color={colors.accent} size={26} fallback="⬆" />
         <View style={styles.uploadText}>
           <Text style={[styles.uploadTitle, { color: colors.text }]}>{reading ? 'Lendo sua fatura…' : 'Enviar PDF ou foto da fatura'}</Text>
-          <Text style={[styles.uploadSubtitle, { color: colors.textSecondary }]}>Extraímos os dados automaticamente para você conferir.</Text>
+          <Text style={[styles.uploadSubtitle, { color: colors.textSecondary }]}>
+            {reading ? 'A leitura pode levar até 2 minutos. Mantenha o app aberto.' : 'Extraímos os dados automaticamente para você conferir. Limite de 25 MB.'}
+          </Text>
         </View>
       </Pressable>
 

@@ -3,6 +3,11 @@ import * as SecureStore from 'expo-secure-store';
 const ACCESS_TOKEN_KEY = 'onway.accessToken';
 const REFRESH_TOKEN_KEY = 'onway.refreshToken';
 const REQUEST_TIMEOUT_MS = 15_000;
+// O OCR passa por IA e o nginx da borda espera até 120s (proxy_read_timeout).
+const OCR_TIMEOUT_MS = 120_000;
+// client_max_body_size do nginx de produção.
+export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const RATE_LIMIT_MAX_RETRIES = 2;
 
 export type ApiUser = {
   id: string;
@@ -190,6 +195,7 @@ type RawResponse<T> = {
   status: number;
   ok: boolean;
   body: ApiEnvelope<T> | ApiErrorEnvelope | null;
+  retryAfterMs: number | null;
 };
 
 type RawOptions = {
@@ -215,6 +221,14 @@ function apiBaseUrl() {
   const value = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/+$/, '');
   if (!value) {
     throw new ApiError('A URL da API não foi configurada.', 0, 'API_URL_MISSING');
+  }
+  // Tokens Bearer nunca podem trafegar em claro; http:// aqui é erro de configuração.
+  if (!value.startsWith('https://')) {
+    throw new ApiError(
+      'Configuração inválida: EXPO_PUBLIC_API_URL precisa começar com https://.',
+      0,
+      'API_URL_INSECURE',
+    );
   }
   return value;
 }
@@ -248,10 +262,14 @@ async function raw<T>(path: string, options: RawOptions = {}): Promise<RawRespon
       signal: controller.signal,
     });
 
+    const retryAfterSeconds = Number(response.headers.get('retry-after'));
     return {
       status: response.status,
       ok: response.ok,
       body: (await parseJson(response)) as RawResponse<T>['body'],
+      retryAfterMs: Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+        ? retryAfterSeconds * 1000
+        : null,
     };
   } catch (error) {
     if (error instanceof ApiError) throw error;
@@ -259,13 +277,23 @@ async function raw<T>(path: string, options: RawOptions = {}): Promise<RawRespon
       throw new ApiError('A API demorou para responder. Tente novamente.', 408, 'REQUEST_TIMEOUT');
     }
     throw new ApiError(
-      'Não foi possível conectar à API. Verifique o Tailscale e sua internet.',
+      'Não foi possível conectar à API. Verifique sua conexão com a internet.',
       0,
       'NETWORK_ERROR',
     );
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function fallbackErrorMessage(status: number) {
+  if (status === 429) {
+    return 'Muitas solicitações no momento. Aguarde alguns instantes e tente novamente.';
+  }
+  if (status === 403) {
+    return 'Acesso bloqueado temporariamente. Tente novamente mais tarde.';
+  }
+  return `A API respondeu com erro ${status}.`;
 }
 
 function unwrap<T>(response: RawResponse<T>): T {
@@ -275,7 +303,7 @@ function unwrap<T>(response: RawResponse<T>): T {
 
   const error = response.body && !('data' in response.body) ? response.body : null;
   throw new ApiError(
-    error?.message || `A API respondeu com erro ${response.status}.`,
+    error?.message || fallbackErrorMessage(response.status),
     response.status,
     error?.code,
     error?.errors,
@@ -298,6 +326,7 @@ async function clearTokens() {
 
 let refreshInFlight: Promise<string> | null = null;
 let sessionExpiredHandler: (() => void) | null = null;
+let passwordChangeRequiredHandler: (() => void) | null = null;
 
 async function performRefresh() {
   const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
@@ -333,41 +362,79 @@ function refreshAccessToken() {
   return refreshInFlight;
 }
 
-async function authenticatedGet<T>(path: string) {
-  let accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-  if (!accessToken) accessToken = await refreshAccessToken();
-
-  let response = await raw<T>(path, { accessToken });
-  if (response.status === 401) {
-    const latestAccessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-    accessToken = latestAccessToken && latestAccessToken !== accessToken
-      ? latestAccessToken
-      : await refreshAccessToken();
-    response = await raw<T>(path, { accessToken });
-  }
-  if (response.status === 401) {
-    await clearTokens();
-    sessionExpiredHandler?.();
-  }
-  return unwrap(response);
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function authenticatedSend<T>(path: string, body: unknown, timeoutMs?: number) {
+// Backoff exponencial com jitter; respeita o Retry-After quando a borda enviar.
+function rateLimitDelayMs(attempt: number, retryAfterMs: number | null) {
+  const base = retryAfterMs ?? 1_500 * 2 ** attempt;
+  const jitter = Math.random() * 400;
+  return Math.min(base + jitter, 20_000);
+}
+
+type AuthenticatedOptions = {
+  method?: 'GET' | 'POST';
+  // FormData não pode ser reaproveitado entre tentativas; passe uma factory.
+  body?: unknown | (() => unknown);
+  timeoutMs?: number;
+};
+
+async function requestWithAuth<T>(path: string, options: AuthenticatedOptions = {}): Promise<RawResponse<T>> {
+  const resolveBody = () =>
+    typeof options.body === 'function' ? (options.body as () => unknown)() : options.body;
+
   let accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
   if (!accessToken) accessToken = await refreshAccessToken();
 
-  let response = await raw<T>(path, { method: 'POST', body, accessToken, timeoutMs });
+  let response = await raw<T>(path, {
+    method: options.method,
+    body: resolveBody(),
+    timeoutMs: options.timeoutMs,
+    accessToken,
+  });
   if (response.status === 401) {
     const latestAccessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
     accessToken = latestAccessToken && latestAccessToken !== accessToken
       ? latestAccessToken
       : await refreshAccessToken();
-    response = await raw<T>(path, { method: 'POST', body, accessToken, timeoutMs });
+    response = await raw<T>(path, {
+      method: options.method,
+      body: resolveBody(),
+      timeoutMs: options.timeoutMs,
+      accessToken,
+    });
   }
   if (response.status === 401) {
     await clearTokens();
     sessionExpiredHandler?.();
   }
+  if (
+    response.status === 403 &&
+    response.body &&
+    !('data' in response.body) &&
+    response.body.code === 'PASSWORD_CHANGE_REQUIRED'
+  ) {
+    passwordChangeRequiredHandler?.();
+  }
+  return response;
+}
+
+async function authenticatedGet<T>(path: string) {
+  for (let attempt = 0; ; attempt += 1) {
+    const response = await requestWithAuth<T>(path);
+    if (response.status === 429 && attempt < RATE_LIMIT_MAX_RETRIES) {
+      await sleep(rateLimitDelayMs(attempt, response.retryAfterMs));
+      continue;
+    }
+    return unwrap(response);
+  }
+}
+
+// Mutações não são reexecutadas em 429: os limites de login/refresh/upload são
+// estreitos e retry silencioso só prolonga o bloqueio do IP.
+async function authenticatedSend<T>(path: string, body: unknown | (() => unknown), timeoutMs?: number) {
+  const response = await requestWithAuth<T>(path, { method: 'POST', body, timeoutMs });
   return unwrap(response);
 }
 
@@ -388,6 +455,12 @@ function withPagination(path: string, page?: number, limit?: number) {
 export const mobileApi = {
   setSessionExpiredHandler(handler: (() => void) | null) {
     sessionExpiredHandler = handler;
+  },
+
+  // Chamado quando qualquer rota de dados responde 403 PASSWORD_CHANGE_REQUIRED
+  // (mustChangePassword ativo no servidor; apenas /me e a troca de senha passam).
+  setPasswordChangeRequiredHandler(handler: (() => void) | null) {
+    passwordChangeRequiredHandler = handler;
   },
 
   async login(email: string, password: string) {
@@ -417,6 +490,39 @@ export const mobileApi = {
       }
       throw error;
     }
+  },
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    let accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+    if (!accessToken) accessToken = await refreshAccessToken();
+
+    let response = await raw<Partial<AuthResponse>>('/api/v3/app/auth/change-password', {
+      method: 'POST',
+      body: { currentPassword, newPassword },
+      accessToken,
+    });
+    if (response.status === 401) {
+      // Pode ser só o access token expirado: renova uma vez e repete.
+      accessToken = await refreshAccessToken();
+      response = await raw<Partial<AuthResponse>>('/api/v3/app/auth/change-password', {
+        method: 'POST',
+        body: { currentPassword, newPassword },
+        accessToken,
+      });
+    }
+    if (response.status === 401) {
+      // Token recém-renovado: este 401 é sobre a senha atual, não sobre a
+      // sessão — não derruba o usuário para a tela de login.
+      const body = response.body && !('data' in response.body) ? response.body : null;
+      throw new ApiError(body?.message || 'Senha atual incorreta.', 401, 'INVALID_CURRENT_PASSWORD');
+    }
+
+    const data = unwrap(response);
+    // Alguns backends rotacionam a sessão na troca de senha.
+    if (data && typeof data.accessToken === 'string' && typeof data.refreshToken === 'string') {
+      await saveTokens(data.accessToken, data.refreshToken);
+    }
+    return data;
   },
 
   async logout() {
@@ -458,15 +564,16 @@ export const mobileApi = {
     authenticatedSend<ApiInvoice>(`/api/v3/app/usinas/${encodeURIComponent(usinaId)}/faturas`, payload),
   // OCR de PDF/imagem: multipart no campo `arquivo`. Pode retornar campos
   // extraídos (sem id) para confirmação, ou uma fatura já gravada (com id).
-  ocrInvoice: (usinaId: string, file: InvoiceUpload) => {
-    const form = new FormData();
-    form.append('arquivo', { uri: file.uri, name: file.name, type: file.mimeType } as unknown as Blob);
-    return authenticatedSend<Partial<ApiInvoice> & Record<string, unknown>>(
+  ocrInvoice: (usinaId: string, file: InvoiceUpload) =>
+    authenticatedSend<Partial<ApiInvoice> & Record<string, unknown>>(
       `/api/v3/app/usinas/${encodeURIComponent(usinaId)}/faturas/ocr`,
-      form,
-      45_000,
-    );
-  },
+      () => {
+        const form = new FormData();
+        form.append('arquivo', { uri: file.uri, name: file.name, type: file.mimeType } as unknown as Blob);
+        return form;
+      },
+      OCR_TIMEOUT_MS,
+    ),
 };
 
 export function apiErrorMessage(error: unknown) {

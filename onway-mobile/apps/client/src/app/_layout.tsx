@@ -26,7 +26,17 @@ function NavigationRoot() {
     if (status === 'initializing') return;
     const rootSegment = segments[0];
     const protectedRoute = rootSegment === '(tabs)' || rootSegment === 'plant' || rootSegment === 'settings' || rootSegment === 'tickets' || rootSegment === 'checkup' || rootSegment === 'invoices';
-    if (!user && protectedRoute) router.replace('/login');
+    if (!user && protectedRoute) {
+      router.replace('/login');
+      return;
+    }
+    // Enquanto mustChangePassword estiver ativo, o servidor responde 403 em todas
+    // as rotas de dados — a única tela útil é a troca de senha.
+    if (user?.mustChangePassword) {
+      const inChangePassword = rootSegment === 'settings' && (segments as string[])[1] === 'change-password';
+      if (!inChangePassword) router.replace('/settings/change-password');
+      return;
+    }
     if (user && rootSegment === 'login') router.replace('/(tabs)');
   }, [router, segments, status, user]);
 

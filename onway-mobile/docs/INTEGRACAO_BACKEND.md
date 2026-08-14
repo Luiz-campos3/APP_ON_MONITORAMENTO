@@ -12,27 +12,38 @@ A API do app vive sob **`/api/v3/app`**. A base URL muda por ambiente:
 
 | Ambiente | Base URL |
 |---|---|
-| **Teste via VPN (Tailscale) — ATIVO** | `https://monitoramento-vps.tailec3b7b.ts.net` |
-| Produção (futuro) | `https://<subdominio-publico>` (ex.: `https://api-app.onway.app`) |
+| **Produção (pública) — ATIVO** | `https://app.onwaytech.cloud` |
+| ~~Teste via VPN (Tailscale)~~ — **DESLIGADO** | ~~`https://monitoramento-vps.tailec3b7b.ts.net`~~ |
 
-> O proxy Tailscale já está no ar na VPS (`tailscale serve` → `127.0.0.1:3002`),
-> com cert válido do Let's Encrypt. Só é alcançável **dentro do tailnet** (device
-> com Tailscale logado no mesmo tailnet).
+> A API é pública no **mesmo host do portal web**. Borda: Cloudflare Tunnel →
+> Traefik → nginx → backend. Não há porta aberta na VPS; o TLS é da Cloudflare
+> (cert válido, HSTS). O proxy Tailscale antigo foi desativado (`tailscale serve`
+> sem config) — a URL `*.ts.net` está morta e **não deve** ser usada.
 
 **Configure via env do Expo** (`.env` na raiz do projeto do app):
 ```bash
-EXPO_PUBLIC_API_URL=https://monitoramento-vps.tailec3b7b.ts.net
+EXPO_PUBLIC_API_URL=https://app.onwaytech.cloud
 ```
 Vars com prefixo `EXPO_PUBLIC_` ficam acessíveis em `process.env.EXPO_PUBLIC_API_URL`.
+Os perfis do `eas.json` já definem essa env nos builds. O app **recusa** URLs que
+não comecem com `https://` (erro de configuração em runtime).
 
 ### Rede / pré-requisitos
-- **HTTPS resolve o ATS do iOS** — como a API é HTTPS (cert válido do Tailscale),
-  não precisa de exceção de App Transport Security. (Evite `http://` puro no iOS.)
-- **Tailscale no iPhone:** instale o app Tailscale, logue no **mesmo tailnet**,
-  deixe ligado — é o que dá acesso à `*.ts.net`.
-- **Metro (bundle JS):** continua no Mac. Mesma Wi‑Fi Mac↔iPhone → `expo start`
-  direto; em 4G use `expo start --tunnel` ou ponha o Mac no Tailscale.
-- **CORS:** não se aplica a app nativo (fetch do RN não sofre CORS). Nada a fazer.
+- **Nenhuma VPN é necessária para a API** — ela responde publicamente. O
+  Tailscale continua útil apenas para alcançar o **Metro** (bundler de dev)
+  quando ele roda na VPS; veja `TESTE_VIA_TAILSCALE.md`.
+- **HTTPS resolve o ATS do iOS** — cert válido da Cloudflare, sem exceção de App
+  Transport Security. Não use `http://`.
+- **Sem certificate pinning** — o certificado é da borda Cloudflare e rotaciona;
+  pinning quebraria o app em campo.
+- **CORS:** não se aplica a app nativo (fetch do RN não sofre CORS). O backend
+  está com `CORS_ORIGINS` restrito de propósito — **não** teste com
+  `expo start --web` contra produção, o navegador será bloqueado.
+- **Limites da borda:** upload máx. **25 MB** (nginx), corpo JSON máx. **1 MB**,
+  `proxy_read_timeout` de 120s (relevante para o OCR de faturas).
+- **Rate limit por IP:** 300 req/15min na API geral; 10/15min em login+refresh
+  (somente falhas contam); 20/15min em uploads/OCR. Trate `429` com backoff —
+  nunca retry imediato em loop.
 
 ---
 
@@ -272,14 +283,14 @@ const usinas = await getUsinas();    // 4 usinas
 
 ## 5. Checklist para o primeiro teste
 
-1. `EXPO_PUBLIC_API_URL` = URL HTTPS do Tailscale.
-2. Tailscale ligado no iPhone (mesmo tailnet).
-3. `npx expo install expo-secure-store` e colar `src/api/client.ts`.
-4. `npx expo start` → abrir no Expo Go.
-5. `login(...)` com a conta de teste → esperar **4 usinas** em `/usinas`,
+1. `EXPO_PUBLIC_API_URL=https://app.onwaytech.cloud` (sem VPN, funciona em 4G).
+2. `npx expo start` → abrir no Expo Go ou dev client.
+3. `login(...)` com a conta de teste → esperar **4 usinas** em `/usinas`,
    `quantidadeUsinas: 4` no dashboard, detalhe e histórico OK.
-6. Tentar abrir uma usina de outro cliente (UUID aleatório) → deve dar `404`.
+4. Tentar abrir uma usina de outro cliente (UUID aleatório) → deve dar `404`.
+5. Errar a senha 5x → `403` de lockout com mensagem própria.
+6. Esperar o access token expirar (~15 min) → refresh transparente, sem voltar
+   ao login.
 
 > **Segurança:** a senha de teste é entregue por canal seguro (chat), **não**
-> deve ser commitada. Em produção, o app aponta para o subdomínio HTTPS público
-> e o Tailscale é desativado.
+> deve ser commitada.

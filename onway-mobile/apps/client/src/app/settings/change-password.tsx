@@ -6,14 +6,17 @@ import { Screen } from '@/components/screen';
 import { SettingsHeader } from '@/components/settings-header';
 import { SymbolIcon } from '@/components/symbol-icon';
 import { Button, Card, Field } from '@/components/ui';
-import { radius, spacing } from '@/constants/theme';
+import { brand, radius, spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { useOnWayTheme } from '@/contexts/theme-context';
+import { apiErrorMessage, mobileApi } from '@/services/mobile-api';
 
 const MIN_LENGTH = 8;
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
   const { colors } = useOnWayTheme();
+  const { user, markPasswordChanged, logout } = useAuth();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -21,6 +24,9 @@ export default function ChangePasswordScreen() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
+
+  const forced = Boolean(user?.mustChangePassword);
 
   const currentError = submitted && !current ? 'Informe sua senha atual.' : undefined;
   const nextError = submitted && next.length < MIN_LENGTH
@@ -28,15 +34,33 @@ export default function ChangePasswordScreen() {
     : undefined;
   const confirmError = submitted && confirm !== next ? 'As senhas não coincidem.' : undefined;
 
-  function handleSubmit() {
+  async function handleSubmit() {
     setSubmitted(true);
     if (!current || next.length < MIN_LENGTH || confirm !== next) return;
     setLoading(true);
-    // Mock: sem endpoint de troca de senha no backend ainda. Simula sucesso.
-    setTimeout(() => {
-      setLoading(false);
+    setRequestError(null);
+    try {
+      await mobileApi.changePassword(current, next);
+      markPasswordChanged();
       setDone(true);
-    }, 700);
+    } catch (error) {
+      setRequestError(apiErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      await logout();
+    } finally {
+      router.replace('/login');
+    }
+  }
+
+  function handleFinish() {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)');
   }
 
   if (done) {
@@ -49,9 +73,9 @@ export default function ChangePasswordScreen() {
           </View>
           <Text style={[styles.successTitle, { color: colors.text }]}>Senha redefinida</Text>
           <Text style={[styles.successText, { color: colors.textSecondary }]}>
-            Sua nova senha foi registrada neste aparelho. A sincronização com o backend será ativada quando o endpoint estiver disponível.
+            Sua senha foi alterada com sucesso. Use a nova senha no próximo acesso.
           </Text>
-          <Button label="Concluir" onPress={() => router.back()} />
+          <Button label="Concluir" onPress={handleFinish} />
         </Card>
       </Screen>
     );
@@ -69,7 +93,16 @@ export default function ChangePasswordScreen() {
       <Text style={[styles.title, { color: colors.text }]}>Criar uma nova senha</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Escolha uma senha forte com pelo menos {MIN_LENGTH} caracteres.</Text>
 
-      <Card style={styles.form}>
+      {forced ? (
+        <View style={[styles.note, { backgroundColor: `${brand.warning}22` }]}>
+          <SymbolIcon ios="key.fill" android="key" color={brand.warning} size={16} fallback="!" />
+          <Text style={[styles.noteText, { color: colors.text }]}>
+            Por segurança, você precisa definir uma nova senha antes de continuar usando o aplicativo.
+          </Text>
+        </View>
+      ) : null}
+
+      <Card style={[styles.form, forced && { marginTop: spacing.lg }]}>
         <Field
           label="Senha atual"
           placeholder="Sua senha atual"
@@ -100,14 +133,20 @@ export default function ChangePasswordScreen() {
           onSubmitEditing={handleSubmit}
         />
         <Button label="Salvar nova senha" onPress={handleSubmit} loading={loading} />
+
+        {requestError ? (
+          <View style={[styles.errorNote, { backgroundColor: `${brand.danger}16` }]}>
+            <SymbolIcon ios="exclamationmark.circle" android="error" color={brand.danger} size={17} fallback="!" />
+            <Text style={styles.errorText}>{requestError}</Text>
+          </View>
+        ) : null}
       </Card>
 
-      <View style={[styles.note, { backgroundColor: colors.surfaceMuted }]}>
-        <SymbolIcon ios="info.circle" android="info" color={colors.textSecondary} size={16} fallback="i" />
-        <Text style={[styles.noteText, { color: colors.textSecondary }]}>
-          Fluxo mockado: o backend ainda não expõe o endpoint de troca de senha. A tela já está pronta para conectar quando ele existir.
-        </Text>
-      </View>
+      {forced ? (
+        <Pressable onPress={handleLogout} style={styles.logoutButton}>
+          <Text style={[styles.logoutText, { color: colors.textSecondary }]}>Sair da conta</Text>
+        </Pressable>
+      ) : null}
     </Screen>
   );
 }
@@ -116,8 +155,12 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '800', letterSpacing: -0.6 },
   subtitle: { fontSize: 14, lineHeight: 20, marginTop: 5, marginBottom: spacing.xl },
   form: { gap: spacing.lg },
-  note: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start', borderRadius: radius.md, padding: spacing.md, marginTop: spacing.lg },
-  noteText: { flex: 1, fontSize: 11, lineHeight: 16 },
+  note: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start', borderRadius: radius.md, padding: spacing.md },
+  noteText: { flex: 1, fontSize: 12, lineHeight: 17 },
+  errorNote: { borderRadius: radius.md, padding: spacing.md, flexDirection: 'row', gap: 9, alignItems: 'center' },
+  errorText: { flex: 1, color: brand.danger, fontSize: 12, lineHeight: 17 },
+  logoutButton: { alignSelf: 'center', marginTop: spacing.xl, paddingVertical: 8, paddingHorizontal: 16 },
+  logoutText: { fontSize: 13, fontWeight: '700' },
   successCard: { alignItems: 'center', gap: spacing.lg, paddingVertical: spacing.xxl, marginTop: spacing.lg },
   successIcon: { width: 76, height: 76, borderRadius: 38, alignItems: 'center', justifyContent: 'center' },
   successTitle: { fontSize: 20, fontWeight: '800' },

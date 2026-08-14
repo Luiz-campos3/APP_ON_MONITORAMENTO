@@ -29,28 +29,12 @@ export type CheckupReport = {
 };
 
 export const CHECKUP_STEPS = [
-  'Conectando ao inversor',
+  'Conectando à usina',
+  'Verificando comunicação',
   'Lendo geração atual',
   'Comparando com o prognóstico',
-  'Analisando períodos anteriores',
-  'Verificando alarmes',
-  'Medindo desempenho',
   'Consolidando resultado',
 ];
-
-// Ruído determinístico por usina, para que o mock seja estável entre aberturas.
-function hashString(value: string) {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) | 0;
-  }
-  return Math.abs(hash);
-}
-
-function seeded(seed: number, min: number, max: number) {
-  const normalized = ((seed * 9301 + 49297) % 233280) / 233280;
-  return min + normalized * (max - min);
-}
 
 function hoursSince(iso: string | null) {
   if (!iso) return null;
@@ -117,76 +101,6 @@ function forecastCheck(plant: Plant): CheckupItem {
   };
 }
 
-function periodCheck(plant: Plant): CheckupItem {
-  const seed = hashString(`${plant.id}-periodo`);
-  const delta = Math.round(seeded(seed, -18, 22));
-  const status: CheckStatus = delta >= 0 ? 'ok' : delta >= -10 ? 'attention' : 'critical';
-  const sign = delta > 0 ? '+' : '';
-  return {
-    id: 'periodos',
-    label: 'Comparação de períodos',
-    category: 'Desempenho',
-    valueLabel: `${sign}${delta}%`,
-    detail: `Geração ${delta >= 0 ? 'acima' : 'abaixo'} do mesmo período anterior (${sign}${delta}%).`,
-    status,
-    ios: 'calendar.badge.clock',
-    android: 'date_range',
-    real: false,
-  };
-}
-
-function performanceCheck(plant: Plant): CheckupItem {
-  const seed = hashString(`${plant.id}-pr`);
-  const pr = Math.round(seeded(seed, 74, 98));
-  const status: CheckStatus = pr >= 80 ? 'ok' : pr >= 70 ? 'attention' : 'critical';
-  return {
-    id: 'desempenho',
-    label: 'Índice de desempenho (PR)',
-    category: 'Desempenho',
-    valueLabel: `${pr}%`,
-    detail: `Performance ratio estimado em ${pr}%.`,
-    status,
-    ios: 'gauge.with.dots.needle.67percent',
-    android: 'speed',
-    real: false,
-  };
-}
-
-function alarmsCheck(plant: Plant): CheckupItem {
-  const seed = hashString(`${plant.id}-alarmes`);
-  const roll = seeded(seed, 0, 10);
-  const count = plant.hasAlert ? Math.max(1, Math.round(seeded(seed, 1, 2))) : roll > 7.5 ? 1 : 0;
-  const status: CheckStatus = count === 0 ? 'ok' : count === 1 ? 'attention' : 'critical';
-  return {
-    id: 'alarmes',
-    label: 'Alarmes do inversor',
-    category: 'Equipamento',
-    valueLabel: count === 0 ? 'Nenhum' : `${count} ativo${count > 1 ? 's' : ''}`,
-    detail: count === 0 ? 'Nenhum alarme ativo no período.' : 'Alarme(s) registrado(s) — recomendável verificação técnica.',
-    status,
-    ios: 'exclamationmark.triangle.fill',
-    android: 'warning',
-    real: false,
-  };
-}
-
-function temperatureCheck(plant: Plant): CheckupItem {
-  const seed = hashString(`${plant.id}-temp`);
-  const temp = Math.round(seeded(seed, 33, 57));
-  const status: CheckStatus = temp < 50 ? 'ok' : temp < 56 ? 'attention' : 'critical';
-  return {
-    id: 'temperatura',
-    label: 'Temperatura do inversor',
-    category: 'Equipamento',
-    valueLabel: `${temp} °C`,
-    detail: `Temperatura operacional ${temp < 50 ? 'dentro da faixa' : 'acima do ideal'}.`,
-    status,
-    ios: 'thermometer.medium',
-    android: 'device_thermostat',
-    real: false,
-  };
-}
-
 function scoreHeadline(score: number) {
   if (score >= 90) return 'Sistema saudável';
   if (score >= 75) return 'Bom, com pontos de atenção';
@@ -194,15 +108,11 @@ function scoreHeadline(score: number) {
   return 'Verificação técnica recomendada';
 }
 
+// Somente checagens com dados reais da API. Alarmes, desempenho (PR),
+// temperatura e comparação de períodos entram quando o backend expuser
+// esses parâmetros — nunca como valores simulados.
 export function runCheckup(plant: Plant): CheckupReport {
-  const items = [
-    communicationCheck(plant),
-    forecastCheck(plant),
-    periodCheck(plant),
-    performanceCheck(plant),
-    alarmsCheck(plant),
-    temperatureCheck(plant),
-  ];
+  const items = [communicationCheck(plant), forecastCheck(plant)];
 
   const penalties = items.reduce((sum, item) => sum + STATUS_PENALTY[item.status], 0);
   const score = Math.max(0, Math.min(100, Math.round(100 - penalties)));

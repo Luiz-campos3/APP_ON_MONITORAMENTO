@@ -1,37 +1,32 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BrandLogo } from '@/components/brand-logo';
 import { Screen } from '@/components/screen';
 import { SymbolIcon } from '@/components/symbol-icon';
-import { Button, Card, Field } from '@/components/ui';
-import { spacing } from '@/constants/theme';
+import { Button, Card } from '@/components/ui';
+import { supportContact } from '@/config/contact';
+import { brand, spacing } from '@/constants/theme';
 import { useOnWayTheme } from '@/contexts/theme-context';
 
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
+// Por decisão de segurança não existe redefinição self-service: a senha é
+// redefinida pela equipe OnWay, que entrega uma senha temporária ao cliente.
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const { colors } = useOnWayTheme();
-  const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
 
-  const emailError = submitted && !isValidEmail(email) ? 'Informe um e-mail válido.' : undefined;
-
-  function handleSubmit() {
-    setSubmitted(true);
-    if (!isValidEmail(email)) return;
-    setLoading(true);
-    // Mock: sem endpoint de recuperação no backend ainda. Simula o envio.
-    setTimeout(() => {
-      setLoading(false);
-      setSent(true);
-    }, 700);
+  async function openContact(kind: 'whatsapp' | 'phone') {
+    const raw = kind === 'whatsapp' ? supportContact.whatsapp : supportContact.phone;
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) {
+      Alert.alert('Canal ainda não configurado', `Adicione o número oficial em EXPO_PUBLIC_ONWAY_${kind === 'whatsapp' ? 'WHATSAPP' : 'PHONE'}.`);
+      return;
+    }
+    const url = kind === 'whatsapp'
+      ? `https://wa.me/${digits}?text=${encodeURIComponent('Olá! Esqueci a senha do aplicativo OnWay Cliente e preciso redefinir meu acesso.')}`
+      : `tel:${digits}`;
+    const supported = await Linking.canOpenURL(url);
+    if (supported) await Linking.openURL(url);
   }
 
   return (
@@ -45,41 +40,30 @@ export default function ForgotPasswordScreen() {
       </View>
 
       <View style={styles.content}>
-        {sent ? (
-          <Card style={styles.card}>
-            <SymbolIcon ios="envelope.badge.fill" android="mark_email_read" color={colors.accent} size={46} fallback="@" />
-            <Text style={[styles.cardTitle, { color: colors.text }]}>Verifique seu e-mail</Text>
-            <Text style={[styles.cardText, { color: colors.textSecondary }]}>
-              Se {email.trim()} estiver cadastrado, enviaremos as instruções para redefinir sua senha.
-            </Text>
-            <Button label="Voltar ao login" onPress={() => router.replace('/login')} />
-          </Card>
-        ) : (
-          <>
-            <Text style={[styles.title, { color: colors.text }]}>Recuperar acesso</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Informe o e-mail da sua conta e enviaremos um link para redefinir a senha.
-            </Text>
-            <Card style={styles.form}>
-              <Field
-                label="E-mail"
-                placeholder="voce@email.com"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                textContentType="emailAddress"
-                value={email}
-                onChangeText={setEmail}
-                error={emailError}
-                onSubmitEditing={handleSubmit}
-              />
-              <Button label="Enviar instruções" onPress={handleSubmit} loading={loading} />
-            </Card>
-            <Text style={[styles.note, { color: colors.textSecondary }]}>
-              Fluxo mockado enquanto o endpoint de recuperação não está disponível no backend.
-            </Text>
-          </>
-        )}
+        <Text style={[styles.title, { color: colors.text }]}>Recuperar acesso</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Por segurança, a redefinição de senha é feita pela equipe OnWay. Fale com a gente por um dos
+          canais abaixo e enviaremos uma senha temporária para você trocar no primeiro acesso.
+        </Text>
+
+        <Card style={styles.card}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => openContact('whatsapp')}
+            style={({ pressed }) => [styles.channel, { backgroundColor: brand.green }, pressed && styles.pressed]}>
+            <SymbolIcon ios="message.fill" android="chat" color={brand.white} size={20} fallback="✆" />
+            <Text style={styles.channelText}>Falar no WhatsApp</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => openContact('phone')}
+            style={({ pressed }) => [styles.channel, { backgroundColor: colors.surfaceMuted }, pressed && styles.pressed]}>
+            <SymbolIcon ios="phone.fill" android="call" color={colors.text} size={20} fallback="✆" />
+            <Text style={[styles.channelText, { color: colors.text }]}>Ligar para {supportContact.phoneDisplay}</Text>
+          </Pressable>
+        </Card>
+
+        <Button label="Voltar ao login" variant="secondary" onPress={() => router.replace('/login')} />
       </View>
     </Screen>
   );
@@ -89,12 +73,11 @@ const styles = StyleSheet.create({
   screen: { minHeight: '100%' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
-  content: { flex: 1, justifyContent: 'center', paddingBottom: 60 },
+  content: { flex: 1, justifyContent: 'center', paddingBottom: 60, gap: spacing.xl },
   title: { fontSize: 30, fontWeight: '800', letterSpacing: -0.8 },
-  subtitle: { fontSize: 15, lineHeight: 22, marginTop: 10, marginBottom: spacing.xl },
-  form: { gap: spacing.lg },
-  note: { fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: spacing.lg, paddingHorizontal: 12 },
-  card: { alignItems: 'center', gap: spacing.lg, padding: spacing.xl },
-  cardTitle: { fontSize: 20, fontWeight: '800', textAlign: 'center' },
-  cardText: { fontSize: 14, lineHeight: 20, textAlign: 'center', marginBottom: spacing.sm },
+  subtitle: { fontSize: 15, lineHeight: 22, marginTop: -10 },
+  card: { gap: spacing.md },
+  channel: { minHeight: 52, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: spacing.lg },
+  channelText: { color: brand.white, fontSize: 14, fontWeight: '800' },
+  pressed: { opacity: 0.85 },
 });

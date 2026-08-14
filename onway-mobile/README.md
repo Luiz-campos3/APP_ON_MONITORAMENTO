@@ -6,10 +6,11 @@ Fundação mobile em React Native, Expo e TypeScript.
 
 - `apps/client`: aplicativo do cliente em desenvolvimento;
 - aplicativo do técnico: em standby, ainda não criado;
-- autenticação Bearer e dados reais pela API `/api/v3/app`;
+- autenticação Bearer e dados reais pela API pública `https://app.onwaytech.cloud/api/v3/app`;
 - tokens armazenados com `expo-secure-store`;
-- dashboard, usinas e histórico conectados ao backend;
-- alertas, recuperação de senha e gestão de dispositivos aguardam endpoints próprios.
+- dashboard, usinas, histórico, contratos, faturas e troca de senha conectados ao backend;
+- alertas, push e gestão de dispositivos aguardam endpoints próprios;
+- recuperação de senha é feita pela equipe OnWay (sem fluxo self-service, por decisão de segurança).
 
 ## Executar
 
@@ -18,8 +19,8 @@ cd apps/client
 npm run ios
 ```
 
-Também é possível validar no navegador com `npm run web`.
-
-Crie `apps/client/.env.local` com a URL do ambiente e use uma conta provisionada
-pelo backend. O ambiente de teste atual exige que o aparelho esteja conectado ao
-mesmo tailnet da VPS.
+A URL da API já vem configurada em `apps/client/.env` e nos perfis do
+`eas.json`; use uma conta provisionada pelo backend. A API é pública — não é
+preciso VPN. Não valide contra produção com `npm run web`: o backend restringe
+CORS de propósito e o navegador será bloqueado. O Tailscale só é necessário se o
+Metro (bundler de dev) rodar na VPS — veja `docs/TESTE_VIA_TAILSCALE.md`.

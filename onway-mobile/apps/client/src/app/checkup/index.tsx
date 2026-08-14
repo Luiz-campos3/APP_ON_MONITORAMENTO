@@ -98,7 +98,7 @@ export default function CheckupScreen() {
       <SettingsHeader title="Verificação do sistema" />
       <Text style={[styles.title, { color: colors.text }]}>Diagnóstico da usina</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        Leremos os parâmetros do sistema — geração, prognóstico, alarmes, desempenho e comparação de períodos — e geramos um resultado.
+        Verificamos a comunicação da usina e a geração em relação ao prognóstico, e geramos um resultado.
       </Text>
 
       {plants.length ? (
@@ -134,7 +134,7 @@ export default function CheckupScreen() {
       <View style={[styles.mockNote, { backgroundColor: colors.surfaceMuted }]}>
         <SymbolIcon ios="info.circle" android="info" color={colors.textSecondary} size={16} fallback="i" />
         <Text style={[styles.mockNoteText, { color: colors.textSecondary }]}>
-          Comunicação e prognóstico usam dados reais da API. Desempenho, alarmes e temperatura são simulados até o backend expor esses parâmetros.
+          Todas as checagens usam dados reais da API. Novos parâmetros (alarmes, desempenho e temperatura) serão incluídos quando o backend os disponibilizar.
         </Text>
       </View>
 

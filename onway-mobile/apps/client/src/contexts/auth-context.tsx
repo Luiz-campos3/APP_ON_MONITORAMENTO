@@ -11,6 +11,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<ApiUser>;
   logout: () => Promise<void>;
   retryBootstrap: () => Promise<void>;
+  markPasswordChanged: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -43,7 +44,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setUser(null);
       setStatus('unauthenticated');
     });
-    return () => mobileApi.setSessionExpiredHandler(null);
+    // O servidor bloqueia as rotas de dados com 403 PASSWORD_CHANGE_REQUIRED
+    // enquanto mustChangePassword estiver ativo; o guard de navegação reage à flag.
+    mobileApi.setPasswordChangeRequiredHandler(() => {
+      setUser((current) =>
+        current && !current.mustChangePassword ? { ...current, mustChangePassword: true } : current,
+      );
+    });
+    return () => {
+      mobileApi.setSessionExpiredHandler(null);
+      mobileApi.setPasswordChangeRequiredHandler(null);
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -63,6 +74,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
+  const markPasswordChanged = useCallback(() => {
+    setUser((current) =>
+      current && current.mustChangePassword ? { ...current, mustChangePassword: false } : current,
+    );
+  }, []);
+
   const value = useMemo<AuthContextValue>(() => ({
     status,
     user,
@@ -70,7 +87,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     login,
     logout,
     retryBootstrap: bootstrap,
-  }), [bootstrap, bootstrapError, login, logout, status, user]);
+    markPasswordChanged,
+  }), [bootstrap, bootstrapError, login, logout, markPasswordChanged, status, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

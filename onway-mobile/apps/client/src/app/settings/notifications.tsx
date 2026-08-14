@@ -7,11 +7,11 @@ import { brand, spacing } from '@/constants/theme';
 import { type NotificationPreferences, useClientApp } from '@/contexts/client-app-context';
 import { useOnWayTheme } from '@/contexts/theme-context';
 
+// Apenas as categorias que têm efeito real hoje: elas filtram os alertas
+// exibidos no app. Relatório mensal e atendimento entram junto com o push.
 const options: { key: keyof NotificationPreferences; title: string; description: string }[] = [
   { key: 'plantOffline', title: 'Usina offline', description: 'Avise quando uma unidade parar de enviar dados.' },
   { key: 'lowGeneration', title: 'Baixa geração', description: 'Receba alertas de desempenho abaixo do esperado.' },
-  { key: 'monthlyReport', title: 'Relatório mensal', description: 'Notifique quando um novo resumo estiver disponível.' },
-  { key: 'serviceUpdates', title: 'Atendimento e visitas', description: 'Atualizações sobre chamados e visitas técnicas.' },
 ];
 
 export default function NotificationsScreen() {
@@ -41,7 +41,7 @@ export default function NotificationsScreen() {
         ))}
       </Card>
       <Text style={[styles.saved, { color: colors.textSecondary }]}>
-        Preferências salvas neste aparelho. Elas já controlam o badge de alertas; push remoto depende de endpoint de dispositivos/notificações.
+        Preferências salvas neste aparelho e aplicadas aos alertas exibidos no app. Notificações push chegarão em uma próxima versão.
       </Text>
     </Screen>
   );
