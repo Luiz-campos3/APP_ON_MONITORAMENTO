@@ -210,6 +210,65 @@ Restrições de sempre: resolver nunca deletar, dry-run antes, contagem
 antes/depois, testes. Nada em produção sem eu presente.
 ```
 
+## Resolução do bug de alertas (20/08) — churn confirmado, escopo aplicado
+
+**Churn confirmado pelo backend** (reproduzido no Postgres do dev: resolver com
+`prognostico=30` → o tick seguinte recria com `opened_at` de hoje). Minha
+dedução estava certa. **Proposta implementada:** `baixa_geracao` agora exige
+`fabricante ∈ FABRICANTES_COM_PROGNOSTICO` (hoje `['sungrow']`, com
+`COALESCE(lower(fabricante),'')` por causa de "Goodwe" vs "GoodWe" e do
+envenenamento por `NULL`). Os 48 caem sozinhos, sem recriar (3 ticks
+verificados). Carimbo `{"encerrado_por":"fabricante_sem_prognostico"}`.
+
+**Entregue:** PR **#35** (commits `68bc2b6` ciclo de vida + `dc81b5e` escopo),
+19 specs, suíte 188/188, 17 asserções contra Postgres real.
+
+**Item 1 aplicado em produção (com o usuário):** 45 órfãos do backfill Enphase
+fechados (`sem_conexao_envoy` 32→0, `micro_baixa_producao` 11→0,
+`micro_falha_producao` 1→0, `problema_medidor` 1→0). UPDATE 45, nada apagado
+(197 linhas antes e depois).
+
+**Estado esperado pós-deploy do #35:** fecham 48 Enphase + 1 GoodWe (fora do
+escopo); segue aberto **1 Sungrow** (prognóstico 75, warning, vivo). O portal
+passa a mostrar 1 alerta de baixa geração **verdadeiro** — mas **pequeno**: a
+regra vale para 11 de 525 usinas até a issue #36 andar. O sinal vivo das outras
+514 continua em `usinas.status`/`alerta` (que o app já usa).
+
+**Issue #36 (follow-up dos coletores) — decisão do usuário antes de código:** o
+backend sinalizou que na Sungrow `prognostico` **não é prognóstico de geração**,
+é um proxy discreto da contagem de alarmes (só 0, 80 ou 95). Em vez de cada
+coletor escrever o campo, **derivar um prognóstico real de `usina_leitura`
+resolveria a frota inteira de uma vez**, independente de vendor. **Recomendo
+esse caminho** — e ele também destrava o "% da previsão" do app (ver abaixo).
+
+## Achado: "% da previsão" do app está MORTO (não mente, mas nunca funciona)
+
+Verificado contra produção (conta de teste, 4 usinas Sungrow):
+`expectativaMensalKwh` chega **`undefined`** em todas — a API do app **não expõe
+o campo** (`mapUsina` só devolve `expectativaAnualKwh`, e mesmo esse só em 1 de
+4). O app faz `expectedMonth = numeric(expectativaMensalKwh)` → **0 para todas**
+→ `generationPercentage(x, 0) = null` → dashboard mostra "Sem previsão
+cadastrada" e o checkup mostra o item de prognóstico como `info`/"—".
+
+**Diagnóstico honesto:** não é bug de número errado (degrada corretamente) — é
+**recurso morto**. Causa raiz no backend: os campos de expectativa **não são
+coletados** (só 10 de 525 usinas têm `expectativa_mensal`, 8 têm anual; e
+`expectativa_mensal` nem é kWh — é array de 12 percentuais). A API do app também
+não repassa o mensal.
+
+**Consequência de produto:** o "% da previsão" (dashboard) e a checagem
+"Geração × prognóstico" (checkup) não têm dado para funcionar na frota. Sem
+tratamento no app o usuário vê "Sem previsão" em quase tudo.
+
+**Recomendação (decisão do usuário — SEM código ainda):** o conserto certo é o
+backend derivar um prognóstico real de `usina_leitura` (issue #36) e **expor um
+`expectativaMensalKwh` (ou % de previsão) vivo na API do app**; aí o recurso
+funciona fleet-wide. Interinamente, opções no app: (a) **manter "Sem previsão"**
+(honesto, recomendado até o backend ter dado real); (b) derivar
+`expectedMonth = expectativaAnualKwh/12` — funciona só para as poucas usinas com
+anual e tem **viés sazonal** (mês de alta parece 120%, inverno 70%), então eu
+**não** recomendo sem a curva mensal. Aguardando sua escolha.
+
 ## Contratos PROPOSTOS pelo backend (ainda não construídos — não são reais)
 
 > Só entram no `INTEGRACAO_BACKEND.md` quando existirem e forem validados contra
