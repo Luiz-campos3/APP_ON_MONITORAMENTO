@@ -15,6 +15,8 @@ function plant(overrides: Partial<Plant> = {}): Plant {
     generationToday: 12,
     generationMonth: 950,
     expectedMonth: 1000,
+    expectedMonthToDate: 1000,
+    forecastSource: 'historico',
     accumulatedGeneration: 10_000,
     updatedAt: '2026-08-19T11:00:00.000Z',
     updatedAtLabel: 'há 1 h',
@@ -83,9 +85,23 @@ describe('checagem de prognóstico', () => {
   });
 
   it('informativo sem prognóstico cadastrado', () => {
-    const item = itemById(runCheckup(plant({ expectedMonth: 0 })), 'prognostico');
+    const item = itemById(runCheckup(plant({ expectedMonthToDate: 0, forecastSource: 'unknown' })), 'prognostico');
     expect(item.status).toBe('info');
     expect(item.valueLabel).toBe('—');
+    expect(item.detail).toContain('não disponível');
+  });
+
+  it('informativo com detalhe próprio quando a usina não tem histórico', () => {
+    const item = itemById(runCheckup(plant({ expectedMonthToDate: 0, forecastSource: 'sem_historico' })), 'prognostico');
+    expect(item.status).toBe('info');
+    expect(item.detail).toContain('sem histórico');
+  });
+
+  it('compara com o esperado-até-hoje, não com a meta do mês cheio', () => {
+    // até-hoje 800, geração 750 → 93% (ok); com a meta cheia (1000) seria 75%.
+    const item = itemById(runCheckup(plant({ generationMonth: 750, expectedMonthToDate: 800 })), 'prognostico');
+    expect(item.status).toBe('ok');
+    expect(item.detail).toContain('previsto até hoje');
   });
 });
 

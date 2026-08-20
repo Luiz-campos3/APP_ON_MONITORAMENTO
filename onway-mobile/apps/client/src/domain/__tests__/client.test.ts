@@ -1,4 +1,6 @@
 import {
+  forecastPercentage,
+  forecastSummary,
   formatLastReading,
   generationPercentage,
   statusLabel,
@@ -27,6 +29,8 @@ function apiPlant(overrides: Partial<ApiPlant> = {}): ApiPlant {
     geracaoAcumuladaKwh: 100,
     geracaoMesKwh: 50,
     expectativaMensalKwh: 60,
+    expectativaMesAteHojeKwh: 40,
+    fonteExpectativa: 'historico',
     expectativaAnualKwh: 700,
     ultimaLeitura: '2026-08-19T11:00:00.000Z',
     fonteLeitura: 'growatt',
@@ -106,6 +110,51 @@ describe('toPlant', () => {
     expect(toPlant(apiPlant({ geracaoHojeKwh: null, geracaoDiaKwh: 5 })).generationToday).toBe(5);
     expect(toPlant(apiPlant()).generationToday).toBe(3); // cai em geracaoAtual
     expect(toPlant(apiPlant({ geracaoAtual: null })).generationToday).toBe(0);
+  });
+
+  it('mapeia a expectativa: meta do mês, esperado até hoje e fonte', () => {
+    const result = toPlant(apiPlant());
+    expect(result.expectedMonth).toBe(60); // mês cheio (meta)
+    expect(result.expectedMonthToDate).toBe(40); // denominador do %
+    expect(result.forecastSource).toBe('historico');
+  });
+
+  it('usina sem histórico: kWh caem para 0 e a fonte vira sem_historico', () => {
+    const result = toPlant(apiPlant({
+      expectativaMensalKwh: null,
+      expectativaMesAteHojeKwh: null,
+      fonteExpectativa: 'sem_historico',
+    }));
+    expect(result.expectedMonthToDate).toBe(0);
+    expect(result.forecastSource).toBe('sem_historico');
+  });
+
+  it('resposta pré-#40 (campos ausentes): fonte vira unknown, sem quebrar', () => {
+    const result = toPlant(apiPlant({
+      expectativaMesAteHojeKwh: undefined,
+      fonteExpectativa: undefined,
+    }));
+    expect(result.expectedMonthToDate).toBe(0);
+    expect(result.forecastSource).toBe('unknown');
+  });
+});
+
+describe('previsão (% e rótulo)', () => {
+  it('usa o esperado-até-hoje como denominador, não a meta do mês cheio', () => {
+    // geração 50, até-hoje 40 → 125%; se usasse a meta (60) daria 83%.
+    expect(forecastPercentage(plant())).toBe(125);
+  });
+
+  it('resume com % quando há expectativa viva', () => {
+    expect(forecastSummary(plant())).toBe('125% da previsão');
+  });
+
+  it('resume "Sem histórico ainda" quando a usina não tem série', () => {
+    expect(forecastSummary(plant({ expectedMonthToDate: 0, forecastSource: 'sem_historico' }))).toBe('Sem histórico ainda');
+  });
+
+  it('resume "Sem previsão cadastrada" no fallback/pré-deploy', () => {
+    expect(forecastSummary(plant({ expectedMonthToDate: 0, forecastSource: 'unknown' }))).toBe('Sem previsão cadastrada');
   });
 });
 
