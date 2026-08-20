@@ -210,8 +210,11 @@ type ApiEnvelope<T> = {
 type ApiErrorEnvelope = {
   status?: 'error';
   message?: string;
+  // A API aninha o código em `errors.code` (objeto) — confirmado no aceite A2
+  // (ex.: PASSWORD_CHANGE_REQUIRED, SENHA_ATUAL_INVALIDA). `code` de raiz não é
+  // usado hoje; fica como fallback caso o backend passe a emiti-lo também.
   code?: string;
-  errors?: unknown[];
+  errors?: { code?: string; details?: unknown } | unknown[];
 };
 
 type RawResponse<T> = {
@@ -235,11 +238,22 @@ export class ApiError extends Error {
     message: string,
     readonly httpStatus: number,
     readonly code?: string,
-    readonly details?: unknown[],
+    readonly details?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+// Extrai o código do erro do envelope: prioriza `errors.code` (formato real da
+// API), com fallback para um eventual `code` de raiz. Retorna undefined quando
+// `errors` vier como array (formato legado/defensivo) ou ausente.
+export function readErrorCode(body: ApiErrorEnvelope | null | undefined): string | undefined {
+  const errors = body?.errors;
+  if (errors && !Array.isArray(errors) && typeof errors.code === 'string') {
+    return errors.code;
+  }
+  return typeof body?.code === 'string' ? body.code : undefined;
 }
 
 function apiBaseUrl() {
@@ -330,7 +344,7 @@ function unwrap<T>(response: RawResponse<T>): T {
   throw new ApiError(
     error?.message || fallbackErrorMessage(response.status),
     response.status,
-    error?.code,
+    readErrorCode(error),
     error?.errors,
   );
 }
@@ -434,16 +448,10 @@ async function requestWithAuth<T>(path: string, options: AuthenticatedOptions = 
     await clearTokens();
     sessionExpiredHandler?.();
   }
-  // Contrato real confirmado no aceite A2 (19/08/2026): o 403 de troca
-  // obrigatória vem SEM `code` — envelope {status, message, errors} com
-  // message "Troca de senha obrigatória". Mantemos o match por `code`
-  // (pedido ao backend no I3) com fallback pela mensagem real.
+  // Contrato real confirmado (backend v1.6.0): o 403 de troca obrigatória traz
+  // `errors.code === 'PASSWORD_CHANGE_REQUIRED'` (aninhado em `errors`, objeto).
   const errorBody = response.body && !('data' in response.body) ? response.body : null;
-  if (
-    response.status === 403 &&
-    errorBody &&
-    (errorBody.code === 'PASSWORD_CHANGE_REQUIRED' || errorBody.message === 'Troca de senha obrigatória')
-  ) {
+  if (response.status === 403 && readErrorCode(errorBody) === 'PASSWORD_CHANGE_REQUIRED') {
     passwordChangeRequiredHandler?.();
   }
   return response;
@@ -545,13 +553,11 @@ export const mobileApi = {
       });
     }
     if (response.status === 401) {
-      // Token recém-renovado: este 401 é sobre a senha atual, não sobre a
-      // sessão — não derruba o usuário para a tela de login.
-      // (Contrato confirmado no aceite A2: o backend responde 403 "Senha atual
-      // inválida" nesse caso, que cai no unwrap abaixo com a mensagem certa;
-      // este ramo fica como defesa se o backend mudar para 401.)
+      // Contrato real (backend v1.6.0): senha atual errada responde 403
+      // `errors.code=SENHA_ATUAL_INVALIDA`, tratado no unwrap abaixo. Um 401
+      // aqui, após o refresh, é sessão inválida de fato — mensagem defensiva.
       const body = response.body && !('data' in response.body) ? response.body : null;
-      throw new ApiError(body?.message || 'Senha atual incorreta.', 401, 'INVALID_CURRENT_PASSWORD');
+      throw new ApiError(body?.message || 'Sua sessão expirou. Entre novamente.', 401, 'SESSION_INVALID');
     }
 
     const data = unwrap(response);

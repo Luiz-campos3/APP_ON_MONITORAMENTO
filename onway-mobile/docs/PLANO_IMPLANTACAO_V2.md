@@ -41,7 +41,7 @@ Nada abaixo é código: são decisões ou artefatos que só a OnWay/backend pode
 
 | # | Input necessário | O que destrava | Observação |
 |---|---|---|---|
-| I1 | **Contrato das rotas de chamados** (`GET/POST /api/v3/app/chamados`? campos do POST, formato do anexo/foto) | Fase B inteira | O middleware da API responde 401 antes do roteamento — é impossível descobrir rotas/schema de fora. O critério de aceite da migração citava "chamados (listar, abrir, criar com foto)", indicando que o backend já os tem |
+| I1 | ~~**Contrato das rotas de chamados**~~ | Fase B inteira | ✅ **RECEBIDO (20/08/2026)**. Rotas em produção desde 14/07; doc `src/docs/app_chamados_api.md`; contrato em `INTEGRACAO_BACKEND.md`. Criação aninhada na usina (`POST /usinas/:id/chamados`), foto no campo `foto` ≤10MB, sem canal de mensagens. **Fase B destravada — só falta autorização** |
 | I2 | **Credenciais da conta de teste** | Fase A (validação dos 8 critérios de aceite da migração) | Entregar por canal seguro, nunca commitar |
 | I3 | Confirmação do **envelope do 403** `PASSWORD_CHANGE_REQUIRED` (campo `code`?) e da **semântica do 401** em change-password (senha atual errada ≠ sessão expirada) | Fase A | O app assumiu `code` no envelope de erro e trata 401 pós-refresh como "senha atual incorreta" |
 | I4 | **Textos jurídicos**: política de privacidade, termos de uso, política de exclusão de conta (LGPD) | Fase D | Sem isso a Apple reprova; hoje são placeholders em `settings/privacy.tsx` |

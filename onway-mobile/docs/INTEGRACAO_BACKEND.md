@@ -61,16 +61,19 @@ renovar quando o access expira.
   anti-roubo) → o app cai para a tela de login.
 - **Mensagens genéricas:** senha errada e e-mail inexistente retornam o mesmo
   `401 "Credenciais inválidas"` (não revele "e-mail não existe" na UI).
-- **Proteção contra força bruta (contrato REAL, medido em 19/08/2026):** o que
-  existe é o **rate limit da borda por IP** — após ~5–10 falhas de login, novas
-  tentativas recebem `429 "Muitas tentativas de login, aguarde."` com header
-  `Retry-After` de **~30 s** (não 15 min). **NÃO há lockout por conta**: após a
-  janela do 429 expirar (~30–40 s), a senha correta autentica normalmente —
-  testado. ⚠️ A afirmação anterior ("5 falhas → 403 Conta temporariamente
-  bloqueada, 15 min") **não se confirmou** e foi corrigida aqui. Implicação de
-  segurança em aberto: rate limit é **por IP**, logo um ataque distribuído/com
-  rotação de IP não é barrado no nível da conta — decidir com o backend se um
-  lockout por conta é desejável (ver `EXECUCAO_FASE_A.md`).
+- **Proteção contra força bruta (contrato REAL, revisado com o backend em
+  20/08/2026):** existem **duas camadas**:
+  1. **Lockout por conta** (chave = e-mail, independente de IP): **5 falhas de
+     credencial → 15 min de bloqueio**. Barra ataque distribuído/com rotação de
+     IP. *(Correção: a Fase A havia concluído erradamente que não existia — o
+     teste nunca o disparou porque o 429 por IP abaixo intercepta a requisição
+     **antes** do controller, então o contador da conta mal incrementa.)*
+  2. **Rate limit da borda por IP**: ~10 falhas/15 min em login/refresh →
+     `429 "Muitas tentativas de login, aguarde."` com `Retry-After`.
+  Fragilidades conhecidas no backend (a decidir lá): o contador da conta não
+  decai com o tempo (só zera com login OK) e o balde é **compartilhado com o
+  login do portal web** — falhas no app podem travar o portal. Ver
+  `EXECUCAO_FASE_A.md`.
 - **`mustChangePassword`:** vem no login/`/me`; quando `true`, leve o usuário a
   trocar a senha via `POST /auth/change-password`.
 
@@ -87,9 +90,10 @@ POST /api/v3/app/auth/change-password  body: { currentPassword, newPassword } (B
 
 | Situação | Resposta real |
 |---|---|
-| `mustChangePassword` ativo × rota de dados | `403 {status:'error', message:'Troca de senha obrigatória', errors:[]}` — **sem campo `code`** (pedido ao backend incluir `code: PASSWORD_CHANGE_REQUIRED`; o app tem fallback pela mensagem) |
+| **Forma do envelope de erro** | `{status:'error', message, errors:{code, details?}}` — o código fica **aninhado em `errors.code`** (objeto), **não** na raiz. O app lê via `readErrorCode`. *(Correção: a Fase A anotou `errors:[]`/"sem code" por não ter inspecionado o valor — o `code` sempre esteve lá.)* |
+| `mustChangePassword` ativo × rota de dados | `403`, `errors.code = 'PASSWORD_CHANGE_REQUIRED'`, message "Troca de senha obrigatória" |
 | Rotas liberadas durante troca forçada | `/me`, `/auth/change-password`, `/auth/refresh`, `/auth/logout` |
-| `change-password` com senha atual errada | `403 "Senha atual inválida"` (**não** 401; sem `code`) |
+| `change-password` com senha atual errada | `403`, `errors.code = 'SENHA_ATUAL_INVALIDA'`, message "Senha atual inválida" (**não** 401) |
 | `change-password` OK | `200`; **não** rotaciona tokens no corpo (sessão atual segue válida) |
 | Refresh | rotaciona: novo access + novo refresh a cada chamada |
 | Refresh após logout | `401` (sessão realmente encerrada) |
@@ -129,6 +133,55 @@ GET /api/v3/app/usinas
 GET /api/v3/app/usinas/:usinaId
 GET /api/v3/app/usinas/:usinaId/historico?inicio=YYYY-MM-DD&fim=YYYY-MM-DD
 ```
+
+### Chamados (contrato confirmado com o backend, 20/08/2026 — v1.6.0)
+
+> Fonte canônica no repo do backend: `src/docs/app_chamados_api.md` (8 seções
+> com exemplos). Resumo conferido contra o código abaixo.
+
+```
+GET  /api/v3/app/chamados                      lista paginada (todas as usinas)
+GET  /api/v3/app/chamados/:chamadoId           detalhe com timeline
+GET  /api/v3/app/usinas/:usinaId/chamados      lista de uma usina
+GET  /api/v3/app/chamados/:chamadoId/anexo     baixa a foto (binário puro, SEM envelope)
+POST /api/v3/app/usinas/:usinaId/chamados      abre um chamado (escopo = usina)
+```
+
+- **Criação é aninhada na usina** (o servidor deriva cliente/contrato dela; o
+  app nunca envia `clienteId`). Usina de outro cliente → `404`.
+- **Paginação** (listas): `?page` (1), `?limit` (20, teto rígido **50**),
+  `?usinaId=<uuid>` opcional na lista geral. Resposta:
+  `data.data[]` + `data.paginacao{page,limit,total}` (total do escopo inteiro).
+- **POST** aceita `multipart/form-data` (com foto) ou `application/json` (sem):
+  | Campo | Obrig. | Nota |
+  |---|---|---|
+  | `descricaoProblema` | **sim** | **mínimo 5 caracteres** (validar no cliente → evita round-trip; erro real é `400 "Descreva o problema (mínimo 5 caracteres)."`) |
+  | `categoria` / `subcategoria` / `natureza` | não | string livre, truncada em 120; a triagem interna pode reclassificar |
+  | `urgencia` | não | ex.: "alta" (40 chars) — é a "prioridade" |
+
+  Não há campo de título/assunto: o protocolo é o `numero` (`CH-0043`) gerado
+  pelo servidor.
+- **Foto:** campo `foto`, **uma por chamado**, no mesmo POST. PNG/JPG/PDF,
+  **≤ 10 MB** (acima → `400 "Arquivo excede 10MB"`, **não** 413 — comprimir no
+  app). Extensão fora da lista **não dá erro**: o chamado é criado sem anexo e
+  responde `201` com `temAnexo:false` — **checar `temAnexo` na resposta**.
+- **Criação** responde `201` com o objeto Chamado completo (dá para inserir na
+  lista local sem refetch). Campos (camelCase): `id`, `numero`, `status`,
+  `statusLabel`, `encerrado`, `categoria`, `subcategoria`, `natureza`,
+  `urgencia`, `descricaoProblema`, `usinaId`, `usinaNome`, `canalOrigem`,
+  `dataCriacao`, `dataFechamento`, `temAnexo`, `criadoEm`.
+- **Detalhe** traz `timeline[] = [{em: ISO, titulo}]` — só marcos públicos de
+  estado ("Chamado aberto", "Em triagem", "Em atendimento", "O.S. gerada",
+  "Chamado resolvido"). **Não há histórico de mensagens nem canal de resposta
+  texto da operação → cliente** (feature nova, decisão de produto). Desenhar a
+  tela como "acompanhe o andamento", não "converse com o suporte".
+- **Status** (9, estáveis): usar o `status` bruto na lógica, exibir
+  `statusLabel`, e usar `encerrado` (bool) em vez de comparar strings. Nasce em
+  `novo`. `aguardando_cliente` é bom candidato a badge de destaque. O app **não
+  transiciona estado** (nem cancela).
+- **Rate limit do POST:** 20/15min por IP (mensagem da API fala "importações" —
+  **não exibir a mensagem crua**, usar texto próprio). Leituras caem no global
+  de 300/15min.
 
 ### `/me`
 ```json
@@ -223,11 +276,13 @@ O app traduz isso via `toOcrExtraction` (`domain/contract.ts`) — `mes_ano`
 |---|---|
 | `400` | validação (ex.: data inválida, intervalo > 366 dias, id de usina não-UUID) |
 | `401` | sem/token inválido/expirado, ou credenciais inválidas |
-| `403` | troca de senha obrigatória · senha atual inválida no change-password (distinguir pela `message` — envelopes sem `code`, ver contrato confirmado acima). **Não** há 403 de lockout por conta — ver nota de força bruta acima |
-| `404` | usina fora do escopo do usuário |
-| `429` | rate limit (login/refresh) |
+| `403` | troca de senha obrigatória (`errors.code=PASSWORD_CHANGE_REQUIRED`) · senha atual inválida no change-password (`errors.code=SENHA_ATUAL_INVALIDA`) — distinguir pelo **`errors.code`** |
+| `404` | usina/chamado fora do escopo do usuário |
+| `429` | rate limit por IP (login/refresh 10/15min; POST chamados 20/15min; global 300/15min) |
 
-Erro padrão: `{ "status":"error", "message":"…", "errors": [ … ] }`.
+Erro padrão: `{ "status":"error", "message":"…", "errors": { "code":"…", "details"?:… } }`
+— o código fica **aninhado em `errors.code`** (objeto), não na raiz. O lockout
+por conta (5 falhas/15min por e-mail) responde no login, não nas rotas de dados.
 
 ---
 

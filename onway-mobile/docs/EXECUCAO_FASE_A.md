@@ -316,6 +316,61 @@ Decisão de produto/segurança do backend.
 `authenticatedGet` o usa, para auto-retry). Dá para exibir "tente novamente em
 ~30 s" em vez da mensagem genérica. Pequeno; aguardando decisão do usuário.
 
+## 20/08/2026 — Correções após revisão do backend (v1.6.0)
+
+O backend revisou os 4 pedidos contra o código de produção e **corrigiu duas
+conclusões erradas da Fase A**. Registro honesto do que eu errei e do que foi
+ajustado:
+
+**Erro 1 — "o 403 não tem `code`" (ERRADO).** O `code` sempre existiu, mas
+**aninhado em `errors.code`** (objeto), não na raiz. Minha anotação de
+`errors: []` foi uma **suposição não verificada** — inspecionei só as chaves do
+envelope, nunca o valor de `errors`. Confirmado agora contra produção:
+- `403` troca obrigatória → `errors.code = 'PASSWORD_CHANGE_REQUIRED'`
+- `403` senha atual errada → `errors.code = 'SENHA_ATUAL_INVALIDA'`
+
+O bug real era do **cliente HTTP**: tipava `errors` como array e lia `code` da
+raiz (sempre `undefined`). **Corrigido** em `mobile-api.ts`: novo
+`readErrorCode` lê `errors.code` (com fallback para raiz); `unwrap` e o check de
+`PASSWORD_CHANGE_REQUIRED` passam a usá-lo; removido o match frágil por
+mensagem. `changePassword` alinhado ao contrato real (403, não 401). **6 testes
+novos** em `services/__tests__/error-envelope.test.ts` (89 no total).
+
+**Erro 2 — "não há lockout por conta" (ERRADO).** O lockout existe desde a Fase
+2 do backend: **5 falhas/15min por e-mail**, independente de IP — exatamente a
+defesa contra rotação de IP que preocupava. Meu teste nunca o disparou porque o
+**429 por IP intercepta antes do controller**, então o contador da conta mal
+chegou a 1 (o backend confirmou pelo `audit_log`). Não era falha de segurança;
+era a ordem das camadas. `INTEGRACAO_BACKEND.md` corrigido.
+
+**Fragilidades reais que o backend encontrou (mais graves que o que pedi):**
+1. O contador de lockout **não decai** — só zera com login OK. Há conta hoje em
+   4/5 (o próprio e-mail de teste chegou a 4/5 durante nossos testes).
+2. O balde de lockout é **compartilhado com o login do portal web** (mesma chave
+   de e-mail) — falhas no app podem **travar o login da pessoa no portal**.
+   São decisões de segurança do backend (ver seção de decisões pendentes).
+
+**I1 (chamados) — RECEBIDO e completo.** Rotas em produção desde 14/07, doc
+canônico `src/docs/app_chamados_api.md`. Contrato resumido em
+`INTEGRACAO_BACKEND.md`. Ressalvas para a Fase B: validar mín. 5 ca+ no cliente;
+foto ≤10MB responde 400 (não 413); checar `temAnexo` na resposta; sem canal de
+mensagens (só timeline de estado). **A Fase B está destravada — aguarda apenas
+autorização expressa do usuário.**
+
+**I9 (exclusão de conta) — não existe, precisa ser construído** (bloqueio de
+App Store). Backend propôs desenho (soft delete da conta de acesso, preserva
+dados de negócio, reautenticação por senha). Aguarda aprovação do usuário.
+
+## Decisões pendentes do usuário (após revisão do backend)
+
+| Decisão | Recomendação |
+|---|---|
+| **I9 — construir exclusão de conta** (desenho do backend) | Aprovar; é bloqueio de publicação. Soft delete do acesso + manter dados fiscais/contratuais, imediato, com reautenticação |
+| **`code` na raiz do envelope** (aditivo) | Baixa prioridade — o app já lê `errors.code` corretamente. Deixar para um release próprio se quiserem padronizar |
+| **Ajustes de lockout** (backend) | Priorizar **baldes separados app/portal** (risco de disponibilidade já manifestado) + **decaimento por janela**; atraso progressivo é opcional |
+| **Mensagem do 429 do POST chamados** | Backend oferece limiter dedicado; de todo modo o app **não** exibe a mensagem crua ("importações") |
+| **I10 — crash reporting** | Sentry (tier grátis) — pendente desde a A1 |
+
 ## Desvios do planejado (consolidado)
 
 | Desvio | Justificativa | Ação futura |
