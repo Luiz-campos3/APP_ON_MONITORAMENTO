@@ -144,6 +144,17 @@ repasse; (b) a conta é do portal web e **não** existe como usuário do app
 ainda não criado pelo operador. **Aguardando confirmação do usuário para
 repetir** — o script está pronto e reexecuta em segundos.
 
+**2ª tentativa (19/08, mais tarde):** usuário atualizou a senha no `.env`
+(nova senha temporária, lida corretamente pelo script — 21 caracteres, sem
+espaços residuais). Resultado idêntico: `401 "Credenciais inválidas"`, sem
+`code`. Como a senha nova também falhou, a hipótese dominante passa a ser a
+**(b): o e-mail não existe na base de usuários do app** — a redefinição de
+senha foi feita, provavelmente, na base do portal web. Enviado ao usuário um
+prompt de diagnóstico para o backend (verificar existência do usuário
+`cliente_app`, criar a conta de teste com `mustChangePassword` ativo e
+confirmar o envelope de erros do I3). 4 falhas de login acumuladas no dia —
+dentro do limite de 10/15min, sem risco de lockout.
+
 **Consideração de segurança:** manter credenciais no `.env` é aceitável para o
 teste (ignorado pelo git; chaves sem prefixo `EXPO_PUBLIC_` não são embutidas
 no bundle), mas a senha deve ser **rotacionada após a validação da A2**.
