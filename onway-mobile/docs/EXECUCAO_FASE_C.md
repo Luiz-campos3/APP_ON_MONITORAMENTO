@@ -601,3 +601,17 @@ hardcodar copy no app); confirmar deep link `{tipo:'alerta', usinaId, alertaId}`
 registrar em INTEGRACAO_BACKEND.md e validar contra a conta de teste. SEM código de
 app até o contrato voltar (governança). Depois de alertas, resta push+preferências
 (exige dev build EAS) para fechar a Fase C.
+
+## Dev build EAS — infraestrutura de push preparada (20/08)
+
+Em paralelo à central de alertas (autorizado pelo usuário). `expo-dev-client`
+instalado (~6.0.21, dependencies); `eas.json` já tinha o perfil `development`
+correto (developmentClient+internal+APK). tsc/eslint/jest verdes (115), sem vuln
+critical. Runbook em `docs/EAS_DEV_BUILD.md`.
+
+**Gargalo é credencial, não código** (documentado): iOS device build exige Apple
+Developer Program PAGO + UDID registrado; push exige APNs. `expo-notifications`
+NÃO foi incluído agora de propósito — é módulo nativo (exigiria rebuild) e o 1º dev
+build sai mais simples sem APNs, já destravando o teste no device de alertas e
+preferências. Entra na etapa 2, quando o contrato de push chegar. Expo Go segue
+funcionando.

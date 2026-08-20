@@ -11,4 +11,5 @@
 | [INTEGRACAO_BACKEND.md](INTEGRACAO_BACKEND.md) | Contrato da API `/api/v3/app`: base URL, autenticação Bearer, endpoints e cliente HTTP de referência |
 | [IDENTIDADE_VISUAL.md](IDENTIDADE_VISUAL.md) | Cores, tipografia e uso da marca OnWay no aplicativo |
 | [TESTE_LOCAL_EXPO_GO.md](TESTE_LOCAL_EXPO_GO.md) | Testar no celular com Expo Go e Metro local — fluxo validado, sem conta Expo nem build |
+| [EAS_DEV_BUILD.md](EAS_DEV_BUILD.md) | Runbook do dev build (EAS): pré-requisitos de credencial, comandos e caminho para push |
 | [TESTE_VIA_TAILSCALE.md](TESTE_VIA_TAILSCALE.md) | Como testar com Expo Go quando o Metro roda na VPS (a API é pública e não precisa de VPN) |
