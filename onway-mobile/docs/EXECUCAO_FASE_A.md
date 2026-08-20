@@ -8,7 +8,7 @@
 | Fase | Status | Autorização |
 |---|---|---|
 | A1 — Higiene e rede de proteção | 🟢 Concluída em 19/08 (exceto 2 itens: crash reporting bloqueado por I10; patch-package adiado) | ✅ 19/08/2026 (usuário autorizou "iniciar a Fase A") |
-| A2 — Validação autenticada | 🟢 **Parte de API concluída em 19/08 (14/14 verificações)** — restam: roteiro em aparelho físico, OCR e lockout (este só com OK explícito) | ✅ 19/08/2026 (mesma autorização) |
+| A2 — Validação autenticada | 🟢 **API 14/14 + login em aparelho físico + log do Metro sem tokens (19/08)** — restam: OCR, conferência visual detalhada e lockout (só com OK explícito) | ✅ 19/08/2026 (mesma autorização) |
 | B, C, D, E | Não iniciadas | ❌ Aguardando autorização expressa |
 
 ---
@@ -209,6 +209,34 @@ log do Metro, refresh transparente após ociosidade), upload OCR dentro do
 timeout (mutação — cria fatura de teste; fazer junto com o teste manual) e
 lockout de 5 falhas (bloqueia a conta temporariamente — **só com OK explícito
 do usuário**).
+
+## 19/08/2026 — A2: teste em aparelho físico (iPhone via Expo Go)
+
+**Setup:** Metro local `npx expo start --offline`; Mac conectado ao hotspot do
+iPhone (`172.20.10.2`) — mesmo fluxo validado em 13/08 (o timeout inicial foi
+diagnosticado como Metro parado + Mac fora do hotspot). Bundle servido ao
+aparelho em **4,5s (1.285 módulos)**.
+
+**Validado:**
+- **Login real em produção a partir do aparelho: OK** (relato do usuário:
+  "executou. acesso ok").
+- **Critério "nenhum token no log do Metro": PASSOU** — varredura do log da
+  sessão que serviu o login: zero JWTs (`eyJ`), zero `Bearer`/`accessToken`/
+  `refreshToken`, zero valores de senha.
+
+**Consideração de segurança (registro):** o Expo CLI exporta as chaves do
+`.env` a cada start e loga **apenas os nomes** (`usuario`, `senha` — sem
+valores). Chaves sem prefixo `EXPO_PUBLIC_` **não são embutidas no bundle**
+do app; ainda assim, ao fim dos testes da Fase A, **remover as credenciais do
+`.env`** e guardá-las em gerenciador de senhas.
+
+**Nota esperada do `--offline`:** "unable to sign manifest" no log é
+consequência conhecida do modo offline e não afeta o teste.
+
+**Pendentes do roteiro em aparelho:** conferência visual item a item (payback
+ausente, header sem "•••", tema claro/escuro, alertas) — usuário reportou o
+acesso geral OK, sem detalhamento por item; upload OCR; refresh transparente
+após ociosidade longa (validado no nível de API; observação passiva no uso).
 
 ## Desvios do planejado (consolidado)
 
