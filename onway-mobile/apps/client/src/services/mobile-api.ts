@@ -64,6 +64,11 @@ export type ApiPlant = {
   geracaoAcumuladaKwh: number | null;
   geracaoMesKwh: number | null;
   expectativaMensalKwh: number | null;
+  // Expectativa derivada de usina_leitura (issue #36 / PR #40). Opcionais porque
+  // só existem a partir do deploy do #40 — antes disso chegam `undefined`.
+  expectativaMesAteHojeKwh?: number | null;
+  fonteExpectativa?: 'historico' | 'sem_historico' | null;
+  // `expectativaAnualKwh` é morto (null p/ quase toda a frota) — não usar no app.
   expectativaAnualKwh: number | null;
   ultimaLeitura: string | null;
   fonteLeitura: string | null;

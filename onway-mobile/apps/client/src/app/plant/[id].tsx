@@ -9,7 +9,7 @@ import { SymbolIcon } from '@/components/symbol-icon';
 import { Button, Card } from '@/components/ui';
 import { brand, radius, spacing } from '@/constants/theme';
 import { useOnWayTheme } from '@/contexts/theme-context';
-import { generationPercentage, statusLabel } from '@/domain/client';
+import { forecastPercentage, statusLabel } from '@/domain/client';
 import type { Contract, InvoiceSummary } from '@/domain/contract';
 import { formatDateParam, startOfDay } from '@/domain/generation-calculations';
 import { usePlantHistory } from '@/hooks/use-plant-history';
@@ -62,7 +62,7 @@ export default function PlantDetailScreen() {
     );
   }
 
-  const monthlyPercentage = generationPercentage(plant.generationMonth, plant.expectedMonth);
+  const monthlyPercentage = forecastPercentage(plant);
   const status = statusLabel(plant.status).toUpperCase();
   const statusColor = plant.status === 'online' ? '#6BE1B3' : plant.status === 'attention' ? brand.warning : brand.danger;
   const generationToday = todayHistory.data?.total ?? plant.generationToday;

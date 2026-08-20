@@ -16,6 +16,8 @@ function plant(overrides: Partial<Plant> = {}): Plant {
     generationToday: 12,
     generationMonth: 950,
     expectedMonth: 1000,
+    expectedMonthToDate: 1000,
+    forecastSource: 'historico',
     accumulatedGeneration: 10_000,
     updatedAt: '2026-08-19T11:00:00.000Z',
     updatedAtLabel: 'há 1 h',

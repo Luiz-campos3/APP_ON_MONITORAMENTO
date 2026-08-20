@@ -13,7 +13,7 @@ import { brand, radius, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useClientData } from '@/contexts/client-data-context';
 import { useOnWayTheme } from '@/contexts/theme-context';
-import { generationPercentage, statusLabel, toPlantAlerts } from '@/domain/client';
+import { forecastSummary, statusLabel, toPlantAlerts } from '@/domain/client';
 import { computePayback } from '@/domain/payback';
 import { usePlantHistory } from '@/hooks/use-plant-history';
 
@@ -39,7 +39,7 @@ export default function HomeScreen() {
   }, []);
   const todayHistory = usePlantHistory(plant?.id, todayRange);
   const firstName = user?.nome.split(' ').filter(Boolean)[0] || 'cliente';
-  const monthlyPercentage = plant ? generationPercentage(plant.generationMonth, plant.expectedMonth) : null;
+  const monthlyForecast = plant ? forecastSummary(plant) : null;
   const alertCount = toPlantAlerts(plants).length;
 
   useEffect(() => {
@@ -187,7 +187,7 @@ export default function HomeScreen() {
           <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Este mês</Text>
           <Text style={[styles.metricValue, { color: colors.text }]}>{plant.generationMonth.toLocaleString('pt-BR')}</Text>
           <Text style={[styles.unit, { color: colors.textSecondary }]}>kWh gerados</Text>
-          <Text style={styles.positive}>{monthlyPercentage === null ? 'Sem previsão cadastrada' : `${monthlyPercentage}% da previsão`}</Text>
+          <Text style={styles.positive}>{monthlyForecast}</Text>
         </Card>
       </View>
 

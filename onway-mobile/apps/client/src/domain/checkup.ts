@@ -1,5 +1,5 @@
 import type { SymbolIcon } from '@/components/symbol-icon';
-import { generationPercentage, type Plant } from '@/domain/client';
+import { forecastPercentage, type Plant } from '@/domain/client';
 
 type IconName = Parameters<typeof SymbolIcon>[0];
 
@@ -81,12 +81,14 @@ function communicationCheck(plant: Plant): CheckupItem {
 }
 
 function forecastCheck(plant: Plant): CheckupItem {
-  const pct = generationPercentage(plant.generationMonth, plant.expectedMonth);
+  const pct = forecastPercentage(plant);
   let status: CheckStatus = 'info';
-  let detail = 'Prognóstico mensal não disponível para esta usina.';
+  let detail = plant.forecastSource === 'sem_historico'
+    ? 'Ainda sem histórico suficiente para prever a geração desta usina.'
+    : 'Prognóstico mensal não disponível para esta usina.';
   if (pct !== null) {
     status = pct >= 90 ? 'ok' : pct >= 70 ? 'attention' : 'critical';
-    detail = `Geração no mês em ${pct}% do prognóstico (${plant.generationMonth.toLocaleString('pt-BR')} de ${plant.expectedMonth.toLocaleString('pt-BR')} kWh).`;
+    detail = `Geração no mês em ${pct}% do previsto até hoje (${plant.generationMonth.toLocaleString('pt-BR')} de ${plant.expectedMonthToDate.toLocaleString('pt-BR')} kWh).`;
   }
   return {
     id: 'prognostico',

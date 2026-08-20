@@ -2,6 +2,14 @@ import type { ApiPlant, PlantHistoryResponse } from '@/services/mobile-api';
 
 export type PlantStatus = 'online' | 'attention' | 'offline';
 
+/**
+ * Origem da expectativa de geração (issue #36 / PR #40). `historico` = derivada
+ * do histórico da própria usina; `sem_historico` = usina sem série suficiente
+ * (kWh vêm null, degradação honesta); `unknown` = campo ausente na resposta
+ * (estado pré-deploy do #40 — mantém o comportamento antigo).
+ */
+export type ForecastSource = 'historico' | 'sem_historico' | 'unknown';
+
 export type Plant = {
   id: string;
   name: string;
@@ -12,7 +20,16 @@ export type Plant = {
   powerKwp: number;
   generationToday: number;
   generationMonth: number;
+  /** Meta do mês cheio (expectativaMensalKwh) — para exibir como "meta do mês". */
   expectedMonth: number;
+  /**
+   * Esperado acumulado até ONTEM (expectativaMesAteHojeKwh) — é o denominador do
+   * "% da previsão". A janela termina ontem de propósito: comparar geração
+   * mês-até-hoje com a meta do mês cheio faria toda usina parecer ruim no início
+   * do mês.
+   */
+  expectedMonthToDate: number;
+  forecastSource: ForecastSource;
   accumulatedGeneration: number;
   updatedAt: string | null;
   updatedAtLabel: string;
@@ -54,6 +71,10 @@ function firstNumeric(...values: (number | null | undefined)[]) {
 
 function normalizeText(value: string | null | undefined) {
   return value?.trim() || '';
+}
+
+function toForecastSource(value: string | null | undefined): ForecastSource {
+  return value === 'historico' || value === 'sem_historico' ? value : 'unknown';
 }
 
 function plantStatus(plant: ApiPlant): PlantStatus {
@@ -122,6 +143,8 @@ export function toPlant(plant: ApiPlant): Plant {
     ),
     generationMonth: numeric(plant.geracaoMesKwh),
     expectedMonth: numeric(plant.expectativaMensalKwh),
+    expectedMonthToDate: numeric(plant.expectativaMesAteHojeKwh),
+    forecastSource: toForecastSource(plant.fonteExpectativa),
     accumulatedGeneration: numeric(plant.geracaoAcumuladaKwh),
     updatedAt: plant.ultimaLeitura,
     updatedAtLabel: formatLastReading(plant.ultimaLeitura),
@@ -268,6 +291,25 @@ export function toGenerationHistory(response: PlantHistoryResponse, period: Hist
 export function generationPercentage(actual: number, expected: number) {
   if (expected <= 0) return null;
   return Math.max(0, Math.round((actual / expected) * 100));
+}
+
+/**
+ * "% da previsão": geração do mês-até-hoje sobre o esperado-até-ontem. Retorna
+ * null quando não há expectativa viva (usina sem histórico ou resposta pré-#40).
+ */
+export function forecastPercentage(plant: Plant) {
+  return generationPercentage(plant.generationMonth, plant.expectedMonthToDate);
+}
+
+/**
+ * Rótulo honesto do "% da previsão" para a UI. Distingue "sem histórico ainda"
+ * (usina nova, sem série) de "Sem previsão cadastrada" (fallback/pré-deploy).
+ */
+export function forecastSummary(plant: Plant) {
+  const pct = forecastPercentage(plant);
+  if (pct !== null) return `${pct}% da previsão`;
+  if (plant.forecastSource === 'sem_historico') return 'Sem histórico ainda';
+  return 'Sem previsão cadastrada';
 }
 
 export function statusLabel(status: PlantStatus) {
