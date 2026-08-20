@@ -411,11 +411,15 @@ async function requestWithAuth<T>(path: string, options: AuthenticatedOptions = 
     await clearTokens();
     sessionExpiredHandler?.();
   }
+  // Contrato real confirmado no aceite A2 (19/08/2026): o 403 de troca
+  // obrigatória vem SEM `code` — envelope {status, message, errors} com
+  // message "Troca de senha obrigatória". Mantemos o match por `code`
+  // (pedido ao backend no I3) com fallback pela mensagem real.
+  const errorBody = response.body && !('data' in response.body) ? response.body : null;
   if (
     response.status === 403 &&
-    response.body &&
-    !('data' in response.body) &&
-    response.body.code === 'PASSWORD_CHANGE_REQUIRED'
+    errorBody &&
+    (errorBody.code === 'PASSWORD_CHANGE_REQUIRED' || errorBody.message === 'Troca de senha obrigatória')
   ) {
     passwordChangeRequiredHandler?.();
   }
@@ -520,6 +524,9 @@ export const mobileApi = {
     if (response.status === 401) {
       // Token recém-renovado: este 401 é sobre a senha atual, não sobre a
       // sessão — não derruba o usuário para a tela de login.
+      // (Contrato confirmado no aceite A2: o backend responde 403 "Senha atual
+      // inválida" nesse caso, que cai no unwrap abaixo com a mensagem certa;
+      // este ramo fica como defesa se o backend mudar para 401.)
       const body = response.body && !('data' in response.body) ? response.body : null;
       throw new ApiError(body?.message || 'Senha atual incorreta.', 401, 'INVALID_CURRENT_PASSWORD');
     }

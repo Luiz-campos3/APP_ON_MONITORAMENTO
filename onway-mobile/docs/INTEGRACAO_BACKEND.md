@@ -63,15 +63,29 @@ renovar quando o access expira.
   `401 "Credenciais inválidas"` (não revele "e-mail não existe" na UI).
 - **Lockout:** 5 falhas em 15 min → `403 "Conta temporariamente bloqueada"`.
 - **`mustChangePassword`:** vem no login/`/me`; quando `true`, leve o usuário a
-  trocar a senha (fluxo de troca ainda a implementar no backend — Fase 5).
+  trocar a senha via `POST /auth/change-password`.
 
 ### Endpoints de auth
 
 ```
-POST /api/v3/app/auth/login     body: { email, password }
-POST /api/v3/app/auth/refresh   body: { refreshToken }
-POST /api/v3/app/auth/logout    body: { refreshToken }
+POST /api/v3/app/auth/login            body: { email, password }
+POST /api/v3/app/auth/refresh          body: { refreshToken }
+POST /api/v3/app/auth/logout           body: { refreshToken }
+POST /api/v3/app/auth/change-password  body: { currentPassword, newPassword } (Bearer)
 ```
+
+### Contrato de erros confirmado no aceite A2 (19/08/2026, contra produção)
+
+| Situação | Resposta real |
+|---|---|
+| `mustChangePassword` ativo × rota de dados | `403 {status:'error', message:'Troca de senha obrigatória', errors:[]}` — **sem campo `code`** (pedido ao backend incluir `code: PASSWORD_CHANGE_REQUIRED`; o app tem fallback pela mensagem) |
+| Rotas liberadas durante troca forçada | `/me`, `/auth/change-password`, `/auth/refresh`, `/auth/logout` |
+| `change-password` com senha atual errada | `403 "Senha atual inválida"` (**não** 401; sem `code`) |
+| `change-password` OK | `200`; **não** rotaciona tokens no corpo (sessão atual segue válida) |
+| Refresh | rotaciona: novo access + novo refresh a cada chamada |
+| Refresh após logout | `401` (sessão realmente encerrada) |
+| Usina com id de formato inválido (não-UUID) | `400 "id da usina inválido"` |
+| Usina de outro cliente (UUID válido) | `404 "Usina não encontrada"` |
 
 **Resposta de login/refresh** (envelope padrão):
 ```json
@@ -173,9 +187,9 @@ GET /api/v3/app/usinas/:usinaId/historico?inicio=YYYY-MM-DD&fim=YYYY-MM-DD
 ### Códigos de erro
 | Código | Quando |
 |---|---|
-| `400` | validação (ex.: data inválida, intervalo > 366 dias) |
+| `400` | validação (ex.: data inválida, intervalo > 366 dias, id de usina não-UUID) |
 | `401` | sem/token inválido/expirado, ou credenciais inválidas |
-| `403` | conta bloqueada por lockout |
+| `403` | conta bloqueada por lockout · troca de senha obrigatória · senha atual inválida no change-password (distinguir pela `message` — envelopes sem `code`, ver contrato confirmado acima) |
 | `404` | usina fora do escopo do usuário |
 | `429` | rate limit (login/refresh) |
 

@@ -81,9 +81,9 @@ Nada abaixo é código: são decisões ou artefatos que só a OnWay/backend pode
 
 A migração foi entregue sem validação autenticada (sem credenciais). Antes de construir em cima, provar que a fundação segura funciona. **Com a conta de teste, Tailscale desligado, em 4G:**
 
-- [ ] Roteiro de aceite completo: login → tokens no SecureStore; `/me`, `/dashboard`, `/usinas`, detalhe, histórico; faturas com OCR dentro do timeout; usina alheia → 404; refresh transparente após 15 min; lockout com 5 falhas → mensagem própria; nenhum token no log do Metro.
-- [ ] Confirmar I3 (envelope do 403 e semântica do 401 na troca de senha); ajustar `mobile-api.ts` se o contrato divergir do assumido.
-- [ ] Testar o fluxo forçado de `mustChangePassword` de ponta a ponta (a conta de teste tem a flag ativa).
+- [x] Roteiro de aceite — **parte de API concluída em 19/08 (14/14)**: login → tokens; `/me`, `/dashboard`, `/usinas`, detalhe, histórico, contrato, faturas; usina alheia → 404 (e 400 para id malformado); refresh com rotação; logout encerra a sessão. **Pendentes:** OCR dentro do timeout, lockout (só com OK — bloqueia a conta), roteiro em aparelho físico (token no log, refresh após ociosidade).
+- [x] Confirmar I3 — **confirmado com divergência dupla** (19/08): 403 de troca obrigatória vem **sem `code`** (app corrigido com fallback pela mensagem; pedir `code` ao backend) e senha atual errada responde **403**, não 401 (fluxo real já exibia a mensagem certa). Contrato registrado em `INTEGRACAO_BACKEND.md`.
+- [x] Testar o fluxo forçado de `mustChangePassword` de ponta a ponta — **validado via API em 19/08** (403 nas rotas de dados → troca → liberação → flag limpa); repetir visualmente no aparelho físico.
 
 **Critério de saída A2:** os 8 critérios de aceite passam em aparelho físico; nenhuma suposição de contrato pendente.
 

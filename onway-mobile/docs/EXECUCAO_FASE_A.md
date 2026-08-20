@@ -8,7 +8,7 @@
 | Fase | Status | Autorização |
 |---|---|---|
 | A1 — Higiene e rede de proteção | 🟢 Concluída em 19/08 (exceto 2 itens: crash reporting bloqueado por I10; patch-package adiado) | ✅ 19/08/2026 (usuário autorizou "iniciar a Fase A") |
-| A2 — Validação autenticada | 🟡 Iniciada em 19/08 — **bloqueada: API rejeitou as credenciais recebidas** (ver registro) | ✅ 19/08/2026 (mesma autorização) |
+| A2 — Validação autenticada | 🟢 **Parte de API concluída em 19/08 (14/14 verificações)** — restam: roteiro em aparelho físico, OCR e lockout (este só com OK explícito) | ✅ 19/08/2026 (mesma autorização) |
 | B, C, D, E | Não iniciadas | ❌ Aguardando autorização expressa |
 
 ---
@@ -159,6 +159,57 @@ dentro do limite de 10/15min, sem risco de lockout.
 teste (ignorado pelo git; chaves sem prefixo `EXPO_PUBLIC_` não são embutidas
 no bundle), mas a senha deve ser **rotacionada após a validação da A2**.
 
+## 19/08/2026 — A2: validação de API concluída (3ª tentativa — credenciais corretas)
+
+**Causa das falhas anteriores:** o e-mail estava errado (`luizgustavo.…` vs o
+correto `luiz.onwayenergy@gmail.com`). Com o e-mail certo, o roteiro passou
+inteiro. Conta de teste: `cliente_app`, `mustChangePassword` ativo, 1 cliente,
+**4 usinas (300 kWp)**, contrato e 3 faturas — cobre todas as telas.
+
+**Resultado (14/14 após refinamento do teste de usina alheia):**
+
+| # | Verificação | Resultado |
+|---|---|---|
+| 1 | Login com senha temporária | 200 em ~490ms · tokens emitidos · `mustChangePassword=true` |
+| 2 | `/me` durante troca forçada | 200 (rota liberada, como esperado) |
+| 3 | Rota de dados durante troca forçada | 403 — **ver achado I3a** |
+| 4 | `change-password` com senha atual errada | 403 — **ver achado I3b** |
+| 5 | Troca de senha real | 200 · **não** rotaciona tokens no corpo (app trata os dois casos) |
+| 6 | Login com a senha nova | 200 · `mustChangePassword=false` |
+| 7 | Senha antiga rejeitada | 401 |
+| 8 | `/dashboard` | 200 em ~440ms · 4 usinas · 300 kWp · 32.394 kWh no mês |
+| 9 | `/usinas` + detalhe | 200 (~100ms) · `ultimaLeitura` presente |
+| 10 | `/historico` | 200 em ~150ms · séries semana/dia/ano preenchidas |
+| 11 | `/contrato` e `/faturas` | 200 · contrato ativo · 3 faturas |
+| 12 | Usina alheia | id não-UUID → **400** "id da usina inválido"; UUID válido de outro dono → **404** "Usina não encontrada" (sem vazamento) |
+| 13 | Refresh | 200 · **rotaciona** access+refresh a cada chamada |
+| 14 | Logout + refresh pós-logout | 200 + 401 (sessão realmente encerrada) |
+
+**Achado I3a (corrigido no app):** o 403 de troca obrigatória vem **sem campo
+`code`** — envelope real `{status:'error', message:'Troca de senha
+obrigatória', errors:[]}`. O app esperava `code: 'PASSWORD_CHANGE_REQUIRED'`
+e o fallback em runtime nunca dispararia. **Correção aplicada em
+`mobile-api.ts`**: match por `code` mantido + fallback pela mensagem real.
+**Pedido ao backend (anexar ao I1/I9):** incluir `code` no envelope.
+
+**Achado I3b (sem mudança de código):** senha atual errada no
+`change-password` responde **403 "Senha atual inválida"** (o app assumia 401
+pós-refresh). O fluxo real cai no `unwrap` e exibe a mensagem correta do
+servidor; o ramo do 401 ficou como defesa documentada.
+
+**Contrato completo registrado em `INTEGRACAO_BACKEND.md`** (seção "Contrato
+de erros confirmado no aceite A2").
+
+**Segurança:** senha temporária trocada durante o teste; a nova senha foi
+gerada aleatoriamente pelo script e **gravada apenas no `.env` local**
+(gitignorado) — não aparece em log, transcript nem neste documento.
+
+**Restam na A2:** roteiro em aparelho físico (Expo Go — tema, telas, token no
+log do Metro, refresh transparente após ociosidade), upload OCR dentro do
+timeout (mutação — cria fatura de teste; fazer junto com o teste manual) e
+lockout de 5 falhas (bloqueia a conta temporariamente — **só com OK explícito
+do usuário**).
+
 ## Desvios do planejado (consolidado)
 
 | Desvio | Justificativa | Ação futura |
@@ -172,8 +223,11 @@ no bundle), mas a senha deve ser **rotacionada após a validação da A2**.
 
 | Item | Bloqueado por | Pedido em |
 |---|---|---|
-| Validação do pipeline no GitHub | primeiro push/PR | — |
-| A2 inteira | I2 — credenciais da conta de teste | a pedir |
+| ~~Validação do pipeline no GitHub~~ | ✅ verde em 19/08 (2 runs) | — |
+| ~~A2 — parte de API~~ | ✅ concluída em 19/08 (I2 recebido) | — |
+| A2 — roteiro em aparelho físico + OCR | disponibilidade do usuário (Expo Go) | — |
+| A2 — teste de lockout (5 falhas) | OK explícito do usuário (bloqueia a conta temporariamente) | a pedir |
+| Backend: incluir `code: PASSWORD_CHANGE_REQUIRED` no 403 | achado I3a — anexar ao pedido do I1/I9 | a pedir |
 | Crash reporting (item A1) | I10 — decisão de ferramenta + DSN | a pedir |
 | Contrato de chamados (Fase B) | I1 | a pedir |
 | Endpoint de exclusão de conta (Fase D) | I9 — pedir junto com I1 | a pedir |
