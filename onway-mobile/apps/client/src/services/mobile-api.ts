@@ -252,6 +252,31 @@ export type CreateTicketPayload = {
   urgencia?: string | null;
 };
 
+// Sessões (contrato v1.6.1). Uma entrada por aparelho (família), não por linha.
+export type ApiSession = {
+  familyId: string;
+  dispositivo: string | null;
+  iniciadaEm: string; // ISO 8601 — login mais antigo da família
+  ultimoUso: string; // ISO 8601 — último refresh
+  expiraEm: string; // ISO 8601 — expiração do refresh atual
+  isCurrent: boolean;
+};
+
+export type SessionsResponse = {
+  data: ApiSession[];
+  total: number;
+};
+
+export type RevokeSessionResult = {
+  familyId: string;
+  linhasRevogadas: number;
+  eraAtual: boolean; // true = o usuário desconectou o próprio aparelho
+};
+
+export type RevokeOthersResult = {
+  sessoesRevogadas: number;
+};
+
 type ApiEnvelope<T> = {
   status: 'success';
   message?: string;
@@ -531,6 +556,11 @@ async function authenticatedSend<T>(
   return unwrap(response);
 }
 
+// DELETE sem corpo. Como toda mutação, não reexecuta em 429.
+function authenticatedDelete<T>(path: string) {
+  return authenticatedSend<T>(path, undefined, undefined, 'DELETE');
+}
+
 function withDateRange(path: string, inicio?: string, fim?: string) {
   if (!inicio || !fim) return path;
   const params = new URLSearchParams({ inicio, fim });
@@ -697,6 +727,14 @@ export const mobileApi = {
       UPLOAD_TIMEOUT_MS,
     );
   },
+
+  // Sessões ativas do próprio usuário (uma por aparelho).
+  getSessions: () => authenticatedGet<SessionsResponse>('/api/v3/app/me/sessions'),
+  // Revoga uma família. eraAtual=true → o app deve cair para o login.
+  revokeSession: (familyId: string) =>
+    authenticatedDelete<RevokeSessionResult>(`/api/v3/app/me/sessions/${encodeURIComponent(familyId)}`),
+  // Desconecta os outros dispositivos; a sessão atual sobrevive.
+  revokeOtherSessions: () => authenticatedDelete<RevokeOthersResult>('/api/v3/app/me/sessions'),
 };
 
 export function apiErrorMessage(error: unknown) {

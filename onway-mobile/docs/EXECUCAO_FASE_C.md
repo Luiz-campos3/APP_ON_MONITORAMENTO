@@ -9,7 +9,7 @@
 | Frente | Estado (após resposta do backend, 20/08) |
 |---|---|
 | Prompt de contratos | ✅ Enviado e respondido |
-| **Sessões** | 🟡 Máquina pronta no portal; falta o backend portar 2 rotas p/ `authenticateApp` (tamanho P, "uma tarde"). Recomendado **1º** |
+| **Sessões** | ✅ **IMPLEMENTADA e validada contra produção (20/08)** — backend PR #37; tela real do app substitui o card estático |
 | **Alertas — bug de ciclo de vida** | ✅ **CORRIGIDO EM PRODUÇÃO (v1.6.1, 20/08)** — 50→1 alerta real, 45 órfãos fechados, nada deletado. Feature de alertas do app (rotas + leitura por usuário + cobertura da frota via #36) ainda pendente |
 | **Push** | ⛔ Do zero (tamanho GG); nasce junto com preferências |
 | **Preferências** | ⛔ Só coluna `usuarios.notif` morta; nascem com o push |
@@ -324,6 +324,40 @@ ativas agora). Sem mudar comportamento além disso sem confirmar.
 Depois de sessões, os próximos são alertas (feature de app sobre a tabela já
 saneada + a cobertura da frota da issue #36) e por fim push+preferências.
 ```
+
+## Sessões — implementada no app (20/08) ✅
+
+Backend entregou PR #37 (deployado; contrato confirmado contra produção). **1ª
+tela de código de app da Fase C.**
+
+**App:**
+- `mobile-api.ts`: tipos `ApiSession`/`SessionsResponse`/`RevokeSessionResult`/
+  `RevokeOthersResult`; helper `authenticatedDelete`; métodos `getSessions`,
+  `revokeSession(familyId)`, `revokeOtherSessions`.
+- `domain/session.ts`: `toSession`/`toSessions` (atual em 1º; labels de uso
+  relativo e expiração por **duração**, sem ambiguidade de fuso). **8 testes**
+  (106 no total).
+- `settings/sessions.tsx`: reescrita — lista real, "ESTE APARELHO" na atual (sem
+  botão de encerrar), "Encerrar sessão" por família nas outras, "Desconectar
+  outros dispositivos", pull-to-refresh, loading/erro, confirmação por Alert.
+  `eraAtual` cai ao login (defensivo).
+
+**Validação contra produção (conta de teste):**
+| Cenário | Resultado |
+|---|---|
+| GET sessions | 200 · shape exato (familyId, dispositivo, iniciadaEm, ultimoUso, expiraEm, isCurrent) · total 12 (1 atual + 11 "node" dos meus testes) |
+| DELETE :familyId (outra) | 200 · `linhasRevogadas:1` · `eraAtual:false` |
+| DELETE idempotente | 200 · `linhasRevogadas:0` |
+| DELETE uuid malformado | **400** "id de sessão inválido" |
+| DELETE família alheia | **404** "Sessão não encontrada" |
+| /me após revogar outra | 200 (sessão atual preservada) |
+
+Contrato registrado em `INTEGRACAO_BACKEND.md`.
+
+**Nota de teste manual:** a conta ficou com ~12 sessões "node" dos scripts de
+validação de hoje. No teste em aparelho, isso é ótimo: dá para exercitar
+"Desconectar outros dispositivos" e ver a lista limpar — validação real da
+feature de ponta a ponta.
 
 ## Contratos PROPOSTOS pelo backend (ainda não construídos — não são reais)
 

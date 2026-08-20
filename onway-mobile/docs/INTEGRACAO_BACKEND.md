@@ -271,6 +271,32 @@ confirmação. Resposta (`data`), com os campos **aninhados em `campos`** e em
 O app traduz isso via `toOcrExtraction` (`domain/contract.ts`) — `mes_ano`
 "MM/YYYY" é normalizado para a chave "YYYY-MM".
 
+### Sessões (contrato v1.6.1 confirmado contra produção, 20/08/2026)
+
+Uma entrada **por aparelho (família)**, não por linha (o id da linha rotaciona a
+cada refresh; `familyId` é estável). Ficam atrás do gate de troca de senha (403
+`PASSWORD_CHANGE_REQUIRED` com `mustChangePassword` ativo).
+
+```
+GET    /api/v3/app/me/sessions             lista as sessões ativas do usuário
+DELETE /api/v3/app/me/sessions/:familyId   revoga uma família (idempotente)
+DELETE /api/v3/app/me/sessions             desconecta as OUTRAS (a atual sobrevive)
+```
+
+- **GET** → `data: { data: [ {familyId, dispositivo, iniciadaEm, ultimoUso,
+  expiraEm, isCurrent} ], total }`. `dispositivo` é o user-agent cru (pobre até
+  o registro de push trazer marca/modelo); `isCurrent` vem da comparação com o
+  claim `sid` do token. Sem paginação, sem IP.
+- **DELETE :familyId** → `data: { familyId, linhasRevogadas, eraAtual }`.
+  `eraAtual:true` = o usuário desconectou o próprio aparelho → o app cai ao
+  login (o access token morre na próxima chamada). **Idempotente**: revogar já
+  revogada → 200 com `linhasRevogadas:0`. `400 "id de sessão inválido"` (uuid
+  malformado), `404 "Sessão não encontrada"` (família que não é sua).
+- **DELETE (sem id)** → `data: { sessoesRevogadas }` (conta famílias).
+- **Revogação mata o access token na hora** (o middleware checa `sid` a cada
+  request): o aparelho revogado recebe `401 "Sessão invalidada"` — tratar como
+  qualquer 401 (refresh 1×, falha, limpa tokens, login).
+
 ### Códigos de erro
 | Código | Quando |
 |---|---|

@@ -116,7 +116,7 @@ O gap mais grave que restou: o cliente "abre chamado" e **a OnWay nunca fica sab
 - [ ] Deep link de push → detalhe da usina/alerta (scheme `onwayclient` já existe). Push exige dev build — não validar no Expo Go.
 - [ ] Central de alertas consumindo o endpoint. *(Correção 20/08: `toPlantAlerts` **não** é derivação local falsa — formata `temAlerta`/`status`/`alertaMensagem` calculados no servidor a cada coleta, que estão **vivos**. A tabela `alertas` está **congelada** desde 29/07 por um bug de ciclo de vida. NÃO trocar a derivação viva pela tabela antes do backend consertar o ciclo + adicionar produtor de conectividade + leitura por usuário — senão a tela mostraria dados de julho.)*
 - [ ] Reintroduzir as categorias "Relatório mensal" e "Atendimento" nas preferências — agora com efeito real, sincronizadas com o backend.
-- [ ] `settings/sessions.tsx`: listagem e revogação reais (usa o PATCH/DELETE da camada HTTP).
+- [x] `settings/sessions.tsx`: listagem e revogação reais — **implementado e validado contra produção em 20/08** (backend PR #37; revogação por família, "desconectar outros", `isCurrent`). Ver `EXECUCAO_FASE_C.md`.
 - [ ] Dados mínimos no texto da notificação (nada sensível na tela bloqueada).
 
 **Critério de saída:** push de usina offline chega, abre a tela certa, preferências e sessões são reais de ponta a ponta.
