@@ -111,8 +111,12 @@ push/PR:
   postinstall e um `eslint-disable` órfão no `.expo/types` gerado. Corrigidos
   no `eslint.config.js` (globals de Node para `scripts/**`; ignore de
   `.expo/*`). É exatamente a classe de regressão que o CI passa a bloquear.
-- **Validação pendente de push:** GitHub Actions só roda no repositório
-  remoto; o primeiro push a `main` (ou PR) confirma o pipeline verde.
+- **Pipeline validado em 19/08 (push `e8a58e5`):** os dois jobs verdes na
+  primeira execução — gitleaks varreu o histórico completo em 8s sem achar
+  segredos; qualidade (typecheck + lint + 74 testes + audit) em 42s. Run:
+  <https://github.com/Luiz-campos3/APP_ON_MONITORAMENTO/actions/runs/32316339516>.
+  Actions atualizadas de v4 para v5 na sequência (warning de depreciação do
+  Node 20; o warning do `gitleaks-action@v2` persiste até o upstream atualizar).
 
 ## 19/08/2026 — A1: `npx expo install --check`
 
