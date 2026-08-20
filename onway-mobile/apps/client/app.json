@@ -40,7 +40,14 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O OnWay usa suas fotos para você anexar uma imagem ao abrir um chamado de suporte.",
+          "cameraPermission": "O OnWay usa a câmera para você fotografar o problema ao abrir um chamado de suporte."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

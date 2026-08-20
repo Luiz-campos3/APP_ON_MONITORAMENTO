@@ -10,7 +10,7 @@ import { supportContact } from '@/config/contact';
 import { brand, spacing } from '@/constants/theme';
 import { useOnWayTheme } from '@/contexts/theme-context';
 import { useSupport } from '@/contexts/support-context';
-import { TICKET_KINDS, isTicketOpen, ticketKindMeta } from '@/domain/support';
+import { TICKET_KINDS, ticketKindMeta } from '@/domain/support';
 
 const faq = [
   {
@@ -36,7 +36,7 @@ export default function SupportScreen() {
   const { colors } = useOnWayTheme();
   const { tickets } = useSupport();
   const [expanded, setExpanded] = useState<number | null>(null);
-  const openCount = tickets.filter((ticket) => isTicketOpen(ticket.status)).length;
+  const openCount = tickets.filter((ticket) => !ticket.encerrado).length;
 
   function toggleFaq(index: number) {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);

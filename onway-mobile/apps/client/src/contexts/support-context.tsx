@@ -1,106 +1,141 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  suggestedDateInWeek,
-  type NewTicketDraft,
-  type SupportTicket,
-} from '@/domain/support';
+import { useAuth } from '@/contexts/auth-context';
+import { toTicket, type NewTicketDraft, type SupportTicket } from '@/domain/support';
+import { apiErrorMessage, mobileApi, type UploadFile } from '@/services/mobile-api';
 
 type SupportContextValue = {
   tickets: SupportTicket[];
   ready: boolean;
-  createTicket: (draft: NewTicketDraft) => SupportTicket;
-  getTicket: (id: string) => SupportTicket | undefined;
-  cancelTicket: (id: string) => void;
-  /** Simulação (mock): confirma a data com o cliente, como aconteceria até 48h antes. */
-  simulateConfirmation: (id: string) => void;
-  /** Simulação (mock): marca o serviço como concluído. */
-  markCompleted: (id: string) => void;
+  refreshing: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
+  createTicket: (draft: NewTicketDraft, photo?: UploadFile) => Promise<SupportTicket>;
+  fetchTicket: (id: string) => Promise<SupportTicket>;
+  /** Aviso único: chamados de demonstração (mock antigo) foram descartados. */
+  migratedNotice: boolean;
+  dismissMigrationNotice: () => void;
 };
 
-const STORAGE_KEY = '@onway/support-tickets';
+// Cache offline só de leitura da lista (sem timeline). Chave nova para não
+// colidir com o formato antigo do mock.
+const CACHE_KEY = '@onway/chamados-cache';
+// Chave do mock antigo (AsyncStorage): sua presença dispara o aviso de descarte.
+const LEGACY_KEY = '@onway/support-tickets';
+// Teto rígido da API; um cliente raramente passa disso.
+const PAGE_LIMIT = 50;
 
 const SupportContext = createContext<SupportContextValue | null>(null);
 
-// Sem Math.random/crypto disponível de forma garantida no RN; id monotônico simples.
-let idCounter = 0;
-function nextTicketId() {
-  idCounter += 1;
-  return `${Date.now().toString(36)}${idCounter.toString(36).padStart(2, '0')}`;
-}
-
 export function SupportProvider({ children }: PropsWithChildren) {
+  const { status, user } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [ready, setReady] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [migratedNotice, setMigratedNotice] = useState(false);
+  const requestVersion = useRef(0);
 
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((saved) => {
-        if (saved) setTickets(JSON.parse(saved) as SupportTicket[]);
-      })
-      .catch(() => undefined)
-      .finally(() => setReady(true));
+  const persistCache = useCallback((next: SupportTicket[]) => {
+    AsyncStorage.setItem(CACHE_KEY, JSON.stringify(next)).catch(() => undefined);
   }, []);
 
-  function persist(next: SupportTicket[]) {
-    setTickets(next);
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => undefined);
-  }
+  const load = useCallback(async (refresh = false) => {
+    const version = ++requestVersion.current;
+    if (refresh) setRefreshing(true);
+    setError(null);
+    try {
+      const response = await mobileApi.listTickets(1, PAGE_LIMIT);
+      if (version !== requestVersion.current) return;
+      const next = response.data.map(toTicket);
+      setTickets(next);
+      persistCache(next);
+    } catch (loadError) {
+      if (version !== requestVersion.current) return;
+      // Mantém o cache já exibido; só sinaliza o erro.
+      setError(apiErrorMessage(loadError));
+    } finally {
+      if (version === requestVersion.current) {
+        setRefreshing(false);
+        setReady(true);
+      }
+    }
+  }, [persistCache]);
 
-  function createTicket(draft: NewTicketDraft): SupportTicket {
-    const now = new Date().toISOString();
-    const ticket: SupportTicket = {
-      id: nextTicketId(),
-      kind: draft.kind,
-      plantId: draft.plantId,
-      plantName: draft.plantName,
-      description: draft.description.trim(),
-      preferredWeekStart: draft.preferredWeekStart,
-      scheduledDate: null,
-      status: draft.preferredWeekStart ? 'agendado' : 'aberto',
-      createdAt: now,
-      updatedAt: now,
-    };
-    persist([ticket, ...tickets]);
+  // Descarte único dos tickets de demonstração do mock antigo.
+  useEffect(() => {
+    AsyncStorage.getItem(LEGACY_KEY)
+      .then((legacy) => {
+        if (legacy) {
+          setMigratedNotice(true);
+          return AsyncStorage.removeItem(LEGACY_KEY);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (status === 'authenticated' && user) {
+      // Mostra o cache imediatamente e revalida na rede.
+      AsyncStorage.getItem(CACHE_KEY)
+        .then((cached) => {
+          if (cached) setTickets(JSON.parse(cached) as SupportTicket[]);
+        })
+        .catch(() => undefined)
+        .finally(() => load().catch(() => undefined));
+      return;
+    }
+
+    requestVersion.current += 1;
+    setTickets([]);
+    setReady(false);
+    setRefreshing(false);
+    setError(null);
+  }, [load, status, user]);
+
+  const createTicket = useCallback(
+    async (draft: NewTicketDraft, photo?: UploadFile) => {
+      const api = await mobileApi.createTicket(
+        draft.usinaId,
+        {
+          descricaoProblema: draft.description.trim(),
+          categoria: draft.categoria,
+          urgencia: draft.urgencia,
+        },
+        photo,
+      );
+      const ticket = toTicket(api);
+      setTickets((current) => {
+        const next = [ticket, ...current.filter((item) => item.id !== ticket.id)];
+        persistCache(next);
+        return next;
+      });
+      return ticket;
+    },
+    [persistCache],
+  );
+
+  const fetchTicket = useCallback(async (id: string) => {
+    const ticket = toTicket(await mobileApi.getTicket(id));
+    // Atualiza a entrada na lista (mantém a timeline no consumidor).
+    setTickets((current) => current.map((item) => (item.id === ticket.id ? { ...item, ...ticket, timeline: item.timeline } : item)));
     return ticket;
-  }
-
-  function updateTicket(id: string, patch: Partial<SupportTicket>) {
-    persist(
-      tickets.map((ticket) =>
-        ticket.id === id ? { ...ticket, ...patch, updatedAt: new Date().toISOString() } : ticket,
-      ),
-    );
-  }
-
-  function cancelTicket(id: string) {
-    updateTicket(id, { status: 'cancelado' });
-  }
-
-  function simulateConfirmation(id: string) {
-    const ticket = tickets.find((item) => item.id === id);
-    if (!ticket) return;
-    const date = ticket.preferredWeekStart ? suggestedDateInWeek(ticket.preferredWeekStart) : null;
-    updateTicket(id, { status: 'confirmado', scheduledDate: date });
-  }
-
-  function markCompleted(id: string) {
-    updateTicket(id, { status: 'concluido' });
-  }
+  }, []);
 
   const value = useMemo<SupportContextValue>(
     () => ({
       tickets,
       ready,
+      refreshing,
+      error,
+      reload: () => load(true),
       createTicket,
-      getTicket: (id: string) => tickets.find((ticket) => ticket.id === id),
-      cancelTicket,
-      simulateConfirmation,
-      markCompleted,
+      fetchTicket,
+      migratedNotice,
+      dismissMigrationNotice: () => setMigratedNotice(false),
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tickets, ready],
+    [tickets, ready, refreshing, error, load, createTicket, fetchTicket, migratedNotice],
   );
 
   return <SupportContext.Provider value={value}>{children}</SupportContext.Provider>;

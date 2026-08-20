@@ -5,6 +5,9 @@ const REFRESH_TOKEN_KEY = 'onway.refreshToken';
 const REQUEST_TIMEOUT_MS = 15_000;
 // O OCR passa por IA e o nginx da borda espera até 120s (proxy_read_timeout).
 const OCR_TIMEOUT_MS = 120_000;
+// Upload de foto do chamado (≤10 MB): mais folga que os 15s padrão, sem o
+// exagero do OCR.
+const UPLOAD_TIMEOUT_MS = 60_000;
 // client_max_body_size do nginx de produção.
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 const RATE_LIMIT_MAX_RETRIES = 2;
@@ -178,6 +181,9 @@ export type InvoiceUpload = {
   mimeType: string;
 };
 
+// Mesma forma de arquivo para upload de foto de chamado.
+export type UploadFile = InvoiceUpload;
+
 // Shape REAL do OCR confirmado no aceite A2 (19/08/2026): os campos extraídos
 // vêm aninhados em `campos` com nomes snake_case — NÃO no nível raiz nem em
 // camelCase. Ver `toOcrExtraction` em domain/contract.ts.
@@ -199,6 +205,51 @@ export type ApiOcrResponse = {
   titularidade?: { status?: string; motivo?: string; [key: string]: unknown };
   ocr_ref?: string;
   [key: string]: unknown;
+};
+
+// Chamados (contrato v1.6.0). Objeto sempre camelCase; timeline só no detalhe.
+export type ApiTicketEvent = {
+  em: string; // ISO 8601
+  titulo: string;
+};
+
+export type ApiTicket = {
+  id: string;
+  numero: string; // protocolo público, ex.: "CH-0043"
+  status: string; // bruto (novo, em_triagem, …)
+  statusLabel: string; // PT-BR pronto para exibir
+  encerrado: boolean;
+  categoria: string | null;
+  subcategoria: string | null;
+  natureza: string | null;
+  urgencia: string | null;
+  descricaoProblema: string;
+  usinaId: string;
+  usinaNome: string | null;
+  canalOrigem: string; // "app" para os abertos pelo app
+  dataCriacao: string | null; // AAAA-MM-DD
+  dataFechamento: string | null; // AAAA-MM-DD ou null
+  temAnexo: boolean;
+  criadoEm: string; // ISO 8601
+  timeline?: ApiTicketEvent[]; // presente no detalhe
+};
+
+export type TicketsResponse = {
+  data: ApiTicket[];
+  paginacao: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+// Campos aceitos na criação. Só descricaoProblema é obrigatório (mín. 5 chars).
+export type CreateTicketPayload = {
+  descricaoProblema: string;
+  categoria?: string | null;
+  subcategoria?: string | null;
+  natureza?: string | null;
+  urgencia?: string | null;
 };
 
 type ApiEnvelope<T> = {
@@ -494,6 +545,15 @@ function withPagination(path: string, page?: number, limit?: number) {
   return query ? `${path}?${query}` : path;
 }
 
+function withTicketQuery(path: string, page?: number, limit?: number, usinaId?: string) {
+  const params = new URLSearchParams();
+  if (typeof page === 'number') params.set('page', String(page));
+  if (typeof limit === 'number') params.set('limit', String(limit));
+  if (usinaId) params.set('usinaId', usinaId);
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
+}
+
 export const mobileApi = {
   setSessionExpiredHandler(handler: (() => void) | null) {
     sessionExpiredHandler = handler;
@@ -611,6 +671,32 @@ export const mobileApi = {
       },
       OCR_TIMEOUT_MS,
     ),
+
+  // Chamados. Leitura cai no rate limit global; a criação tem limite próprio
+  // (20/15min por IP) — sem retry automático em POST.
+  listTickets: (page?: number, limit?: number, usinaId?: string) =>
+    authenticatedGet<TicketsResponse>(withTicketQuery('/api/v3/app/chamados', page, limit, usinaId)),
+  getTicket: (id: string) =>
+    authenticatedGet<ApiTicket>(`/api/v3/app/chamados/${encodeURIComponent(id)}`),
+  createTicket: (usinaId: string, payload: CreateTicketPayload, photo?: UploadFile) => {
+    const path = `/api/v3/app/usinas/${encodeURIComponent(usinaId)}/chamados`;
+    // Sem foto: JSON simples. Com foto: multipart no campo `foto` (uma só).
+    if (!photo) return authenticatedSend<ApiTicket>(path, payload);
+    return authenticatedSend<ApiTicket>(
+      path,
+      () => {
+        const form = new FormData();
+        form.append('descricaoProblema', payload.descricaoProblema);
+        if (payload.categoria) form.append('categoria', payload.categoria);
+        if (payload.subcategoria) form.append('subcategoria', payload.subcategoria);
+        if (payload.natureza) form.append('natureza', payload.natureza);
+        if (payload.urgencia) form.append('urgencia', payload.urgencia);
+        form.append('foto', { uri: photo.uri, name: photo.name, type: photo.mimeType } as unknown as Blob);
+        return form;
+      },
+      UPLOAD_TIMEOUT_MS,
+    );
+  },
 };
 
 export function apiErrorMessage(error: unknown) {

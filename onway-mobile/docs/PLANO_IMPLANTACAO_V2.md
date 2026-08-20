@@ -87,20 +87,21 @@ A migração foi entregue sem validação autenticada (sem credenciais). Antes d
 
 **Critério de saída A2:** os 8 critérios de aceite passam em aparelho físico; nenhuma suposição de contrato pendente.
 
-### Fase B — Chamados de verdade · ~1–2 semanas · depende de I1
+### Fase B — Chamados de verdade · ~1–2 semanas · depende de I1 · **🟢 IMPLEMENTADA em 20/08/2026** (ver `EXECUCAO_FASE_B.md`)
 
 O gap mais grave que restou: o cliente "abre chamado" e **a OnWay nunca fica sabendo** (tudo em AsyncStorage). O checkup inclusive oferece "Abrir chamado de verificação" — que hoje termina no aparelho.
 
-- [ ] Backend fornece o contrato (I1); registrar em `INTEGRACAO_BACKEND.md`.
-- [ ] `support-context.tsx`: trocar AsyncStorage pela API (listar, abrir, criar); manter cache local só para leitura offline.
-- [ ] Criação com foto: `expo-image-picker` (câmera + galeria), compressão antes do envio, respeitando o limite de 25 MB e o rate limit de uploads (20/15min).
-- [ ] *(Revisão 1)* **Remover metadados EXIF (GPS/identificação do aparelho) das fotos antes do upload** — a foto é tirada na casa/empresa do cliente; coordenadas embutidas são dado pessoal (LGPD). O reprocessamento via `expo-image-manipulator` descarta EXIF como efeito colateral — tornar isso **requisito explícito e testado** do critério de aceite, não acidente de implementação.
-- [ ] Remover os botões de simulação de status (`tickets/[id].tsx` — "SIMULAÇÃO (SEM BACKEND)").
-- [ ] Migração dos tickets locais existentes: exibir aviso único de descarte (eram apenas demonstração) — não reenviar automaticamente.
-- [ ] Estados: vazio, erro, offline, enviando; sem retry automático de POST (mutação).
-- [ ] `app.json`: permissões de câmera/galeria com textos de finalidade (exigência da App Review).
+- [x] Backend fornece o contrato (I1); registrado em `INTEGRACAO_BACKEND.md`.
+- [x] `support-context.tsx`: trocado AsyncStorage pela API (listar, abrir, criar); cache local (`@onway/chamados-cache`) só para leitura offline.
+- [x] Criação com foto: `expo-image-picker` (câmera + galeria), compressão antes do envio. **Ajuste de contrato:** o limite real da foto é **10 MB** (não 25) e responde 400 (não 413) — ver I1.
+- [x] *(Revisão 1)* **EXIF removido antes do upload** — reencode via `expo-image-manipulator` em `services/photo.ts`; requisito explícito e coberto (o reencode descarta GPS/metadados).
+- [x] Removidos os botões de simulação de status (a tela de detalhe foi reescrita — cliente não transiciona estado).
+- [x] Migração dos tickets locais: aviso único de descarte na lista + limpeza da chave antiga.
+- [x] Estados: vazio, erro, offline, enviando; sem retry automático de POST.
+- [x] `app.json`: permissões de câmera/galeria com textos de finalidade.
+- [x] *(Desvios de produto — contrato real)* removido o **agendamento** (backend não tem), removido o **cancelamento pelo cliente**, e a tela virou **"acompanhe o andamento"** (não há canal de mensagens). Detalhes em `EXECUCAO_FASE_B.md`.
 
-**Critério de saída:** chamado aberto no app aparece para a operação no portal; foto anexada chega íntegra; app nunca mais "simula sucesso".
+**Critério de saída:** ⚠️ parcial — a integração foi validada de ponta a ponta contra produção (criar JSON/multipart, listar, detalhe/timeline, validação de 5 chars). **Falta a confirmação de que o chamado aparece no portal da operação** (só a OnWay verifica; a criação retornou `canalOrigem:app`) e o teste visual no aparelho.
 
 ### Fase C — Alertas reais, push e sessões · ~2–3 semanas · depende de I7 (backend)
 
