@@ -3,7 +3,8 @@
 | Documento | Conteúdo |
 |---|---|
 | [PLANO_DESENVOLVIMENTO_MOBILE_ONWAY.md](PLANO_DESENVOLVIMENTO_MOBILE_ONWAY.md) | Plano macro do produto: análise do sistema existente, escopo dos apps Cliente e Técnico, requisitos da API mobile e fases 0–9 |
-| [PLANO_IMPLANTACAO_V2.md](PLANO_IMPLANTACAO_V2.md) | **Plano vigente**: o que está em aberto pós-migração para a API pública — fases A–E, inputs bloqueantes e riscos |
+| [PLANO_IMPLANTACAO_V2.md](PLANO_IMPLANTACAO_V2.md) | **Plano vigente**: o que está em aberto pós-migração para a API pública — fases A–E, inputs bloqueantes e riscos (Revisão 1 em 19/08/2026) |
+| [EXECUCAO_FASE_A.md](EXECUCAO_FASE_A.md) | **Registro de execução da Fase A**: log por item, considerações, desvios documentados e bloqueios |
 | [PLANO_IMPLANTACAO_GAPS.md](PLANO_IMPLANTACAO_GAPS.md) | (Histórico, substituído pela V2) Análise original real vs. mock do app Cliente |
 | [INTEGRACAO_BACKEND.md](INTEGRACAO_BACKEND.md) | Contrato da API `/api/v3/app`: base URL, autenticação Bearer, endpoints e cliente HTTP de referência |
 | [IDENTIDADE_VISUAL.md](IDENTIDADE_VISUAL.md) | Cores, tipografia e uso da marca OnWay no aplicativo |
