@@ -76,6 +76,56 @@ botão "desconectar outros dispositivos" = `DELETE /me/sessions` (sem id).
 **3. Ordem aprovada (recomendação):** Sessões → Alertas (bug do ciclo de vida
 primeiro) → Push + Preferências juntos.
 
+## Prompt de autorização — conserto do bug de ciclo de vida dos alertas (20/08)
+
+> Enviado ao backend como **correção própria e prioritária**, separada da feature
+> de alertas da Fase C. Escopo: só o ciclo de vida (fechar alertas quando a
+> condição some) + limpeza do dado legado. NÃO inclui rotas do app nem leitura
+> por usuário.
+
+```text
+Autorizado: conserte o bug de ciclo de vida dos alertas como um item próprio e
+prioritário. É produção e afeta o portal interno hoje. Escopo ESTRITO: fazer os
+alertas se resolverem sozinhos e limpar o dado legado travado. NÃO construa
+ainda as rotas do app, leitura por usuário nem produtor de conectividade — isso
+é a Fase C do app e vem depois.
+
+Diagnóstico (confirme contra o código antes de mexer):
+- Não há em lugar nenhum um UPDATE alertas SET status='resolvido' — alertas
+  nunca fecham sozinhos.
+- O índice único parcial uq_alerta_aberto_usina (usina_id, tipo) WHERE
+  status <> 'resolvido' + ON CONFLICT DO NOTHING faz cada usina travar 1 alerta
+  aberto por tipo para sempre. Resultado: os ~50 baixa_geracao são todos de
+  29/07; o job roda de hora em hora e não gera nada novo há 3 semanas.
+
+O que fazer:
+1. Passo de RESOLUÇÃO nos jobs, preenchendo resolved_at e status='resolvido'
+   quando a condição deixa de valer:
+   - baixa_geracao: resolver quando usinas.prognostico voltar >= LOWGEN_THRESHOLD
+     (ou a usina for deletada / monitoramento desligado).
+   - sla_vencido: resolver quando o chamado correspondente ficar resolvido ou
+     cancelado.
+   Depois disso, o índice libera e novos alertas voltam a nascer naturalmente.
+2. Dado legado travado:
+   - Reavaliar os baixa_geracao de 29/07 na primeira rodada com a lógica nova
+     (os que já não valem, fecham).
+   - Tipos órfãos do backfill Enphase (sem_conexao_envoy, micro_baixa_producao,
+     micro_falha_producao, problema_medidor) não têm produtor vivo. Proponha
+     como tratá-los (fechar como obsoletos?) e me diga antes de aplicar.
+3. Opcional, se for barato: atualizar a severidade na transição
+   warning<->critical quando o prognóstico cruza 50% (hoje ela é fixada na
+   criação). Se não for trivial, deixe para depois.
+
+Restrições:
+- RESOLVER, nunca DELETAR — preserve o histórico (resolved_at).
+- Rode um dry-run e me mostre quantos alertas fechariam ANTES de aplicar.
+- Testes cobrindo: abre quando a condição vale, fecha quando some, não duplica.
+- Reporte a contagem antes/depois (abertos por tipo) para confirmar o efeito.
+
+Entrega: o que mudou + as contagens. E confirme que o portal interno volta a
+mostrar alertas que refletem a realidade.
+```
+
 ## Contratos PROPOSTOS pelo backend (ainda não construídos — não são reais)
 
 > Só entram no `INTEGRACAO_BACKEND.md` quando existirem e forem validados contra
