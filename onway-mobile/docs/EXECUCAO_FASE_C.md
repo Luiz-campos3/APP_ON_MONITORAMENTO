@@ -443,3 +443,108 @@ por mim.
   limpeza da migração) agora com efeito real, sincronizadas com o backend.
 - **Sessões**: `settings/sessions.tsx` hoje mostra 1 card estático — vira lista
   real com revogação (usa o DELETE já disponível na camada HTTP).
+
+## Issue #36 — spec de previsão derivada (prompt de autorização, 20/08)
+
+Detalhamento do "como" da #36, pedido pelo usuário ("me explique melhor e vamos
+resolver"). Confirmado no código do app que o "% da previsão" **já está cabeado**
+e só recebe `null`: `domain/client.ts:124` (`expectedMonth =
+numeric(expectativaMensalKwh)` → 0), `client.ts:268` (`generationPercentage(x,0)`
+→ null), `(tabs)/index.tsx:190` ("Sem previsão cadastrada"), `checkup.ts:84`
+(mesma origem), e o tipo `expectativaMensalKwh: number|null` já existe em
+`mobile-api.ts:66`. **Conclusão: a resolução da #36 é quase toda backend** — quando
+a API mandar número, dashboard + detalhe + checkup acendem sozinhos, e a mesma
+fonte reabilita `baixa_geracao` na frota. Mudança de app = mínima (apontar o `%`
+para o campo até-hoje; ver contrato crítico abaixo).
+
+**Método recomendado (rendimento específico do próprio histórico):** por usina, de
+`usina_leitura`, rendimento diário = kWh do dia / potenciaKwp; para o mês-alvo,
+percentil alto (P75–P85) dos dias históricos **daquele mês** = "dia esperado em boa
+condição"; `expectativa = rendimento_alvo × kWp × dias`. Sazonal, vendor-independent,
+auto-calibra por clima/orientação. Fallback (usina nova) = curva média da frota.
+
+**Contrato CRÍTICO (evita o app mentir):** o app compara `geracaoMesKwh`
+(mês-até-hoje) com a expectativa. Se a API expuser só o **mês cheio**, no dia 3 o
+"% da previsão" mostra ~10% numa usina perfeita. Backend precisa expor também
+`expectativaMesAteHojeKwh` (esperado acumulado até hoje, via curva diária sazonal)
+— é ESTE que o app usa no denominador. Único ajuste de app da #36: trocar o
+denominador do `%` para o campo até-hoje e deixar cair o "Sem previsão".
+
+Prompt de autorização entregue ao usuário para rodar no backend (método +
+contrato + reabilitar `baixa_geracao` na frota com dry-run/contagem antes-depois).
+Aguarda o contrato real de volta para registrar em INTEGRACAO_BACKEND.md e validar
+contra a conta de teste. **Sem código de app até o contrato voltar** (governança).
+
+## Issue #36 — RESOLVIDA no backend (PR #40) + decisão da base de alerta (20/08)
+
+Backend fechou. Registro do que voltou e das decisões.
+
+**Método que fechou:** P80 do rendimento específico diário (kWh ÷ kWp) do histórico
+da **própria usina** = "o que ela entrega num dia bom". Aferição: usina mediana da
+frota entrega **95,5%** do próprio alvo no mês — número honesto de meta.
+
+**Sazonalidade NÃO entrou (não por escolha):** não há multi-ano — 2026-06=212 usinas,
+07=489, 08=460; antes disso ≤10 usinas com 1–4 dias soltos. O "P80 do mesmo mês em
+todos os anos" colapsa em "P80 dos últimos dias". Implementado com **todo o histórico
+disponível** → vira sazonal sozinho conforme a série cresce, sem mudar a consulta.
+
+**3 guardas (medidas, não supostas):** (1) rendimento fora de 0–10 kWh/kWp/dia é lixo
+(5 usinas com potência cadastrada errada, uma a 40, duas negativas por reset) →
+descartado; (2) usina que nunca gerou não recebe meta (P80≈0); (3) dias decorridos
+contam da **1ª leitura do mês** (usina comissionada dia 15 não é cobrada por 14 dias).
+
+**Fallback de estimativa DESCARTADO:** dar alvo médio da frota a quem tem pouco
+histórico dá "% da previsão" mediano de 13,9% (engana). `fonteExpectativa` =
+`'historico' | 'sem_historico'`; no `sem_historico` os dois kWh vêm **null** → app
+degrada com rótulo próprio, sem ficção.
+
+**Contrato (PR #40, validado contra a conta de teste — 99,9/100,8/101,1/103,8%):**
+em `GET /usinas` e `/usinas/:id`, 3 campos novos por usina:
+
+| Campo | Tipo | Uso |
+|---|---|---|
+| `expectativaMensalKwh` | number \| null | Meta do mês cheio — exibir como "meta" |
+| `expectativaMesAteHojeKwh` | number \| null | Esperado acumulado **até ontem** — denominador do "% da previsão" |
+| `fonteExpectativa` | `'historico'` \| `'sem_historico'` | Degradação honesta |
+
+Janela termina **ontem** de propósito (incluir o dia corrente pela metade faria a
+frota parecer ruim toda manhã). `expectativaAnualKwh` continua null p/ quase todos →
+**app deve parar de usá-lo**. Cobertura: **342 usinas** com expectativa viva (vs 8
+cadastrais). Aritmética verificada no dev: mês cheio 558,0 = 4×4,5×31; até-ontem
+342,0 = 4×4,5×19, com dia plantado de 40 kWh/kWp ignorado. 211/211 testes.
+
+**Inconsistência sinalizada pelo backend:** `geracaoMesKwh` (numerador) NÃO filtra
+leituras implausíveis, a expectativa (denominador) filtra → nas 5 usinas de potência
+errada o % pode sair estranho. Backend deixou assim (numerador = geração medida real).
+**Minha recomendação:** deixar como está — o defeito é dado cadastral (potenciaKwp
+errada), conserto certo é na fonte, não filtrar o numerador. Baixa prioridade.
+
+### Base do alerta baixa_geracao — NÃO trocar (recomendação alinhada com o backend)
+
+Pedi trocar a base do `baixa_geracao` pela razão `geracaoMes/expectativaMesAteHoje`.
+O backend mediu 45 dias e **recomendou contra**, com número: em dia nublado (29/07,
+rendimento mediano 3,16 vs 4,3 típico) a base de **expectativa** dispara **276/353
+(78% da frota)** vs **vizinhos (PR #38) = 72 (20%)**; em 12/07, 178 vs 32. A
+expectativa é *weather-dependent por construção* — **certa para o app** ("choveu,
+gerou menos" é verdade útil ao cliente) e **errada para o alerta** (toda semana ruim
+vira tempestade de alertas — o cenário que o usuário descartou ao escolher "vizinhos").
+E o objetivo (1) — reabilitar na frota + aposentar `FABRICANTES_COM_PROGNOSTICO=['sungrow']`
+— **já está entregue no PR #38** (gate removido, 338 usinas na base de vizinhos). A
+troca não traz cobertura nova, só instabilidade climática. **DECISÃO: não trocar.**
+Backend não fez o swap nem o dry-run sob a base nova (seria medir uma mudança
+recomendada contra). Concordo — sem swap.
+
+### PRs abertos (release do usuário, "comigo presente")
+- **#38** — baixa_geracao na frota (base de vizinhos, gate removido, 338 usinas).
+- **#40** — expectativa no app (os 3 campos acima). Destrava o "% da previsão" morto.
+- **#39** — 54 usinas que nunca geraram (backend: mais urgente que os dois). Para o
+  app, essas caem em `fonteExpectativa:'sem_historico'` (honesto, sem %).
+
+### App — plano (SEM código até #40 em produção; validar contra prod)
+Quando #40 for publicado: (1) validar o contrato vivo contra a conta de teste;
+(2) trocar o denominador do `%` de `expectativaMensalKwh` → `expectativaMesAteHojeKwh`;
+(3) exibir `expectativaMensalKwh` como "meta do mês"; (4) rótulo honesto via
+`fonteExpectativa` (`sem_historico` → "sem histórico ainda", não "Sem previsão
+cadastrada"); (5) parar de usar `expectativaAnualKwh`. Só então registrar o contrato
+em INTEGRACAO_BACKEND.md (após minha validação contra produção). Mudança de app pequena
+e backward-compatible (null hoje → comportamento atual; número após deploy → acende).
