@@ -114,7 +114,7 @@ O gap mais grave que restou: o cliente "abre chamado" e **a OnWay nunca fica sab
 **App:**
 - [ ] `expo-notifications`: registro no login, remoção no logout, permissão com opt-in claro.
 - [ ] Deep link de push → detalhe da usina/alerta (scheme `onwayclient` já existe). Push exige dev build — não validar no Expo Go.
-- [ ] Central de alertas consumindo o endpoint (substituir a derivação local de `toPlantAlerts`).
+- [ ] Central de alertas consumindo o endpoint. *(Correção 20/08: `toPlantAlerts` **não** é derivação local falsa — formata `temAlerta`/`status`/`alertaMensagem` calculados no servidor a cada coleta, que estão **vivos**. A tabela `alertas` está **congelada** desde 29/07 por um bug de ciclo de vida. NÃO trocar a derivação viva pela tabela antes do backend consertar o ciclo + adicionar produtor de conectividade + leitura por usuário — senão a tela mostraria dados de julho.)*
 - [ ] Reintroduzir as categorias "Relatório mensal" e "Atendimento" nas preferências — agora com efeito real, sincronizadas com o backend.
 - [ ] `settings/sessions.tsx`: listagem e revogação reais (usa o PATCH/DELETE da camada HTTP).
 - [ ] Dados mínimos no texto da notificação (nada sensível na tela bloqueada).
