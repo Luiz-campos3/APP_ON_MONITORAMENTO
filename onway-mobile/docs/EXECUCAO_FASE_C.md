@@ -126,6 +126,90 @@ Entrega: o que mudou + as contagens. E confirme que o portal interno volta a
 mostrar alertas que refletem a realidade.
 ```
 
+## Conserto do ciclo de vida — resultado + 2º bug descoberto (20/08)
+
+**Ciclo de vida: consertado e provado.** Regra isolada em `alertas.lifecycle.js`
+(testável sem Postgres); cada job roda RESOLVER → ATUALIZAR → ABRIR. 15 specs
+novos, 184/184 verdes, e **6 cenários reais contra Postgres** passaram —
+incluindo **fechar (bug) e reabrir**, que prova que o índice não trava mais.
+Severidade/mensagem/payload reavaliam na travessia dos 50% (extensão barata que
+o backend fez e sinalizou). Tudo UPDATE, nunca DELETE (`resolved_at` preserva
+histórico).
+
+**⚠️ 2º bug (mais fundo) — `prognostico` é campo morto para 6/7 coletores.** A
+regra `baixa_geracao` lê `usinas.prognostico`, mas **só a Sungrow escreve esse
+campo** (varredura dos 7 coletores). Enphase/GoodWe/Fronius/CSI/Sunweg/SolarEdge
+têm `prognostico` congelado do backfill de julho. Por isso o **dry-run em
+produção move ZERO**: os 48 de 50 `baixa_geracao` continuam `< 85` por dado
+parado, não por realidade. O ciclo de vida está certo, mas a lista do portal
+**não muda** com este deploy.
+
+**Fonte viva continua sendo `usinas.status`/`alerta`** (atualizada a cada coleta
+por todos os coletores) — é o que o app já mostra. Reforça a decisão de **não**
+migrar a aba de Alertas do app para a tabela `alertas` até os produtores serem
+consertados.
+
+**Contagens em produção hoje (nada aplicado):** `baixa_geracao` 50 abertos
+(36 critical / 14 warning); órfãos do backfill Enphase 45 abertos
+(`sem_conexao_envoy` 32, `micro_baixa_producao` 11, `micro_falha_producao` 1,
+`problema_medidor` 1); `sla_vencido` 0.
+
+### Concern técnico levantado por nós: fechar os 48 sozinho gera CHURN
+
+O índice único é parcial (`WHERE status <> 'resolvido'`) + `ON CONFLICT DO
+NOTHING`. Se resolvermos um `baixa_geracao` cujo `prognostico` segue `< 85`
+(congelado), o índice libera e o **ABRIR do próximo tick recria** o alerta —
+agora com `opened_at` de hoje, parecendo "fresco" mas ainda derivado de dado de
+julho. Ou seja: fechar os 48 **só cola** se a regra parar de dispará-los. Por
+isso a recomendação abaixo escopa a detecção ao `prognostico` vivo.
+
+### Decisões (recomendação registrada)
+
+1. **Órfãos Enphase (45):** fechar como obsoletos (`status='resolvido'`,
+   `resolved_at`, payload `{"encerrado_por":"backfill_sem_produtor"}`), nunca
+   deletar. **Aprovar** — não têm produtor, não reabrem. ✅
+2. **48 `baixa_geracao` de fabricante sem `prognostico` vivo:** **não** basta
+   fechar (churn acima). Recomendação: **escopar a regra `baixa_geracao` ao
+   `prognostico` vivo** (só coletores que escrevem o campo — Sungrow hoje), o que
+   torna os 48 inelegíveis → o resolvedor os fecha e o abridor não os recria; e
+   abrir **item separado** "todos os coletores escreverem `prognostico`" para
+   reabilitar a regra na frota inteira depois.
+3. **Pergunta correlata para o app:** `expectativaMensalKwh` (que o app usa em
+   "% da previsão" no dashboard e no checkup) é atualizado por **todos** os
+   coletores ou também está congelado como `prognostico`? Se congelado, o app
+   mostra "% da previsão" desatualizado para 6/7 fabricantes — seria um achado
+   de honestidade do app, a verificar.
+
+### Prompt de autorização enviado ao backend (20/08)
+
+```text
+Ciclo de vida aprovado e ótimo — abra o PR. Sobre o dado legado e o 2º bug
+(prognostico morto para 6/7 coletores), decisões:
+
+1. Órfãos do backfill Enphase (45 abertos: sem_conexao_envoy, micro_*,
+   problema_medidor): AUTORIZADO fechar como obsoletos — status='resolvido',
+   resolved_at=now(), payload {"encerrado_por":"backfill_sem_produtor"}. Nunca
+   deletar. Rode com contagem antes/depois, comigo acompanhando.
+
+2. Os 48 baixa_geracao de fabricante que não escreve prognostico: antes de
+   fechar, me confirme uma coisa — se eu resolver esses 48 mas o prognostico
+   segue congelado < 85, o ABRIR do próximo tick não recria todos com opened_at
+   de hoje (churn)? Se sim, fechar sozinho não resolve. Minha proposta: ESCOPAR
+   a regra baixa_geracao ao prognostico vivo — só rodar para coletores que
+   escrevem o campo (Sungrow hoje) — de modo que os 48 fiquem inelegíveis, o
+   resolvedor os feche e o abridor não os recrie. Concorda? Se sim, faça assim
+   (com dry-run e contagem antes/depois). E abra como ITEM SEPARADO "todos os
+   coletores passam a escrever prognostico" para reabilitar a regra na frota.
+
+3. Correlato (para o app): expectativaMensalKwh — que o app usa em "% da
+   previsão" — é atualizado por TODOS os coletores, ou está congelado como o
+   prognostico? Se congelado, o app mostra número velho para 6/7 fabricantes e
+   eu preciso tratar isso no app. Só me diga o estado do campo por coletor.
+
+Restrições de sempre: resolver nunca deletar, dry-run antes, contagem
+antes/depois, testes. Nada em produção sem eu presente.
+```
+
 ## Contratos PROPOSTOS pelo backend (ainda não construídos — não são reais)
 
 > Só entram no `INTEGRACAO_BACKEND.md` quando existirem e forem validados contra
