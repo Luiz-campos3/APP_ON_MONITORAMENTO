@@ -10,7 +10,7 @@
 |---|---|
 | Prompt de contratos | ✅ Enviado e respondido |
 | **Sessões** | 🟡 Máquina pronta no portal; falta o backend portar 2 rotas p/ `authenticateApp` (tamanho P, "uma tarde"). Recomendado **1º** |
-| **Alertas** | 🟠 Tabela + jobs existem mas **CONGELADOS** (bug de produção); precisa fechar ciclo de vida + produtor de conectividade + leitura por usuário + 4 rotas (tamanho G). Recomendado **2º** |
+| **Alertas — bug de ciclo de vida** | ✅ **CORRIGIDO EM PRODUÇÃO (v1.6.1, 20/08)** — 50→1 alerta real, 45 órfãos fechados, nada deletado. Feature de alertas do app (rotas + leitura por usuário + cobertura da frota via #36) ainda pendente |
 | **Push** | ⛔ Do zero (tamanho GG); nasce junto com preferências |
 | **Preferências** | ⛔ Só coluna `usuarios.notif` morta; nascem com o push |
 | Trabalho no app | ⏸ Backend constrói as rotas primeiro; push exige **dev build**, não Expo Go |
@@ -268,6 +268,62 @@ funciona fleet-wide. Interinamente, opções no app: (a) **manter "Sem previsão
 `expectedMonth = expectativaAnualKwh/12` — funciona só para as poucas usinas com
 anual e tem **viés sazonal** (mês de alta parece 120%, inverno 70%), então eu
 **não** recomendo sem a curva mensal. Aguardando sua escolha.
+
+## Deploy do conserto de alertas — v1.6.1 em produção (20/08)
+
+Caminho GitOps normal (PR #35 → tag `v1.6.1` → GHCR → `producao.env` → agente
+convergiu; sem migration, sem build na VPS). Pós-deploy: serviços 1/1, portal
+200, API do app viva (401 em credencial inválida), `/api/ready` externo 403
+(bloqueado na borda, como deve).
+
+**Efeito medido** (ciclo disparado à mão, mesmo código do agendador, com o
+usuário presente) — bateu 100% a previsão:
+
+| tipo | antes | depois |
+|---|---|---|
+| `baixa_geracao` aberto | 50 | **1** |
+| `baixa_geracao` resolvido | 0 | 49 |
+| órfãos do backfill (4 tipos) | 45 abertos | **0** |
+| total de linhas na tabela | 197 | 197 (nada apagado) |
+
+O único aberto: Sungrow, prognóstico 75, warning — usina certa, fecha e reabre
+sozinha daqui em diante. Carimbos: 49 `fabricante_sem_prognostico` + 45
+`backfill_sem_produtor`. **Confirmado: o portal interno voltou a refletir a
+realidade.** Ressalva mantida: a lista é verdadeira mas pequena (11 de 525
+usinas) até a issue #36. O sinal das outras 514 segue vivo em
+`usinas.status`/`alerta` — que o app já usa.
+
+## Próximo passo — Sessões (rotas do app · prompt para o backend)
+
+Item mais barato da Fase C (P, sem migration): portar as rotas de sessão do
+portal para `authenticateApp`, com as decisões de app já fechadas (revogar por
+família, `isCurrent` via claim `sid`).
+
+```text
+Próximo passo da Fase C do app: sessões. Porte as rotas de sessão do portal
+(GET/DELETE /api/v3/settings/sessoes) para a API do app sob authenticateApp,
+já com os ajustes que combinamos:
+
+1. GET /api/v3/app/me/sessions — lista as sessões ATIVAS do próprio usuário,
+   UMA POR FAMÍLIA (não por linha, que rotaciona a cada refresh). Por item:
+   - familyId (identificador ESTÁVEL — é o que a tela usa para revogar)
+   - dispositivo (user_agent por ora; sei que é pobre — okhttp — tudo bem)
+   - iniciadaEm (created_at da linha mais antiga da família)
+   - ultimoUso (created_at da linha viva da família)
+   - isCurrent (bool) — compare o claim `sid` do access token com a família;
+     nada de hashear cookie como no portal.
+2. DELETE /api/v3/app/me/sessions/:familyId — revokeFamily, escopado ao usuário
+   (revogar família alheia deve dar 404, mesmo forjando o id).
+3. DELETE /api/v3/app/me/sessions (sem id) — "desconectar os outros
+   dispositivos": revoga todas as famílias MENOS a atual.
+
+Me devolva o contrato real (envelope + campos por sessão) para eu registrar no
+INTEGRACAO_BACKEND.md e validar contra a conta de teste (ela tem ~6 sessões
+ativas agora). Sem mudar comportamento além disso sem confirmar.
+
+Depois de sessões, os próximos são alertas (feature de app sobre a tabela já
+saneada + a cobertura da frota da issue #36) e por fim push+preferências.
+```
 
 ## Contratos PROPOSTOS pelo backend (ainda não construídos — não são reais)
 
