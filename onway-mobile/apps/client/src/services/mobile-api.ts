@@ -198,8 +198,10 @@ type RawResponse<T> = {
   retryAfterMs: number | null;
 };
 
+type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+
 type RawOptions = {
-  method?: 'GET' | 'POST';
+  method?: HttpMethod;
   body?: unknown;
   accessToken?: string;
   timeoutMs?: number;
@@ -374,7 +376,7 @@ function rateLimitDelayMs(attempt: number, retryAfterMs: number | null) {
 }
 
 type AuthenticatedOptions = {
-  method?: 'GET' | 'POST';
+  method?: HttpMethod;
   // FormData não pode ser reaproveitado entre tentativas; passe uma factory.
   body?: unknown | (() => unknown);
   timeoutMs?: number;
@@ -433,8 +435,13 @@ async function authenticatedGet<T>(path: string) {
 
 // Mutações não são reexecutadas em 429: os limites de login/refresh/upload são
 // estreitos e retry silencioso só prolonga o bloqueio do IP.
-async function authenticatedSend<T>(path: string, body: unknown | (() => unknown), timeoutMs?: number) {
-  const response = await requestWithAuth<T>(path, { method: 'POST', body, timeoutMs });
+async function authenticatedSend<T>(
+  path: string,
+  body: unknown | (() => unknown),
+  timeoutMs?: number,
+  method: Exclude<HttpMethod, 'GET'> = 'POST',
+) {
+  const response = await requestWithAuth<T>(path, { method, body, timeoutMs });
   return unwrap(response);
 }
 
@@ -539,7 +546,6 @@ export const mobileApi = {
     }
   },
 
-  getMe: () => authenticatedGet<MeResponse>('/api/v3/app/me'),
   getDashboard: () => authenticatedGet<DashboardResponse>('/api/v3/app/dashboard'),
   getPlants: () => authenticatedGet<ApiPlant[]>('/api/v3/app/usinas'),
   getPlant: (id: string) => authenticatedGet<ApiPlant>(`/api/v3/app/usinas/${encodeURIComponent(id)}`),
@@ -548,13 +554,8 @@ export const mobileApi = {
       withDateRange(`/api/v3/app/usinas/${encodeURIComponent(id)}/historico`, inicio, fim),
     ),
 
-  getContracts: () => authenticatedGet<ApiContract[]>('/api/v3/app/contratos'),
-  getContract: (id: string) =>
-    authenticatedGet<ApiContract>(`/api/v3/app/contratos/${encodeURIComponent(id)}`),
   getPlantContract: (id: string) =>
     authenticatedGet<ApiContract>(`/api/v3/app/usinas/${encodeURIComponent(id)}/contrato`),
-  getInvoices: (page?: number, limit?: number) =>
-    authenticatedGet<InvoicesResponse>(withPagination('/api/v3/app/faturas', page, limit)),
   getPlantInvoices: (id: string, page?: number, limit?: number) =>
     authenticatedGet<InvoicesResponse>(
       withPagination(`/api/v3/app/usinas/${encodeURIComponent(id)}/faturas`, page, limit),

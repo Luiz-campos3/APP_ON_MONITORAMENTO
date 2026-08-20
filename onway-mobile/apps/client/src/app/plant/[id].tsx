@@ -74,9 +74,8 @@ export default function PlantDetailScreen() {
           <SymbolIcon ios="chevron.left" android="arrow_back" color={colors.text} size={21} fallback="‹" />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Detalhes da usina</Text>
-        <Pressable accessibilityLabel="Mais opções" style={[styles.headerButton, { backgroundColor: colors.surface }]}>
-          <SymbolIcon ios="ellipsis" android="more_horiz" color={colors.text} size={21} fallback="•••" />
-        </Pressable>
+        {/* Espaçador no lugar do antigo botão sem ação: mantém o título centralizado. */}
+        <View style={styles.headerButton} />
       </View>
 
       <Text style={[styles.title, { color: colors.text }]}>{plant.name}</Text>

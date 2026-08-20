@@ -8,6 +8,7 @@ import { GenerationChart } from '@/components/generation-chart';
 import { Screen } from '@/components/screen';
 import { SymbolIcon } from '@/components/symbol-icon';
 import { Button, Card } from '@/components/ui';
+import { features } from '@/config/features';
 import { brand, radius, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useClientData } from '@/contexts/client-data-context';
@@ -83,7 +84,8 @@ export default function HomeScreen() {
   const statusColor = plant.status === 'online' ? '#63E5B4' : plant.status === 'attention' ? brand.warning : brand.danger;
   const generationToday = todayHistory.data?.total ?? plant.generationToday;
   const generationTodaySource = todayHistory.data ? 'Histórico de hoje' : 'Leitura da API';
-  const payback = computePayback(plant);
+  // Oculto até o backend expor investimento/tarifa reais (I5) — flag em config/features.
+  const payback = features.paybackCard ? computePayback(plant) : null;
 
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor={colors.accent} />}>
@@ -134,25 +136,27 @@ export default function HomeScreen() {
         <Text style={styles.statusTitle}>{plant.status === 'online' ? 'Tudo funcionando' : plant.status === 'attention' ? 'Requer atenção' : 'Sem comunicação'}</Text>
         <Text style={styles.statusSubtitle}>Última atualização {plant.updatedAtLabel}</Text>
 
-        <View style={styles.paybackBlock}>
-          <View style={styles.paybackHead}>
-            <View style={styles.paybackHeadLeft}>
-              <SymbolIcon ios={payback.isPaidOff ? 'checkmark.seal.fill' : 'chart.line.uptrend.xyaxis'} android={payback.isPaidOff ? 'verified' : 'savings'} color="#D9FFF0" size={15} fallback="$" />
-              <Text style={styles.paybackLabel}>{payback.isPaidOff ? 'Sistema já se pagou' : 'Payback do sistema'}</Text>
+        {payback ? (
+          <View style={styles.paybackBlock}>
+            <View style={styles.paybackHead}>
+              <View style={styles.paybackHeadLeft}>
+                <SymbolIcon ios={payback.isPaidOff ? 'checkmark.seal.fill' : 'chart.line.uptrend.xyaxis'} android={payback.isPaidOff ? 'verified' : 'savings'} color="#D9FFF0" size={15} fallback="$" />
+                <Text style={styles.paybackLabel}>{payback.isPaidOff ? 'Sistema já se pagou' : 'Payback do sistema'}</Text>
+              </View>
+              <Text style={[styles.paybackPercent, payback.isPaidOff && { color: '#FFE08A' }]}>
+                {payback.isPaidOff ? '100%' : `${Math.round(payback.percentPaid)}%`}
+              </Text>
             </View>
-            <Text style={[styles.paybackPercent, payback.isPaidOff && { color: '#FFE08A' }]}>
-              {payback.isPaidOff ? '100%' : `${Math.round(payback.percentPaid)}%`}
+            <View style={styles.paybackTrack}>
+              <View style={[styles.paybackFill, { width: `${Math.max(3, payback.percentPaid)}%`, backgroundColor: payback.isPaidOff ? '#FFE08A' : '#D9FFF0' }]} />
+            </View>
+            <Text style={styles.paybackNote}>
+              {payback.isPaidOff
+                ? `${payback.accumulatedSavingsLabel} economizados · retorno de ${payback.returnAmountLabel}`
+                : `${payback.accumulatedSavingsLabel} de ${payback.investmentLabel}${payback.projectedDateLabel ? ` · quita em ${payback.projectedDateLabel}` : ''}`}
             </Text>
           </View>
-          <View style={styles.paybackTrack}>
-            <View style={[styles.paybackFill, { width: `${Math.max(3, payback.percentPaid)}%`, backgroundColor: payback.isPaidOff ? '#FFE08A' : '#D9FFF0' }]} />
-          </View>
-          <Text style={styles.paybackNote}>
-            {payback.isPaidOff
-              ? `${payback.accumulatedSavingsLabel} economizados · retorno de ${payback.returnAmountLabel}`
-              : `${payback.accumulatedSavingsLabel} de ${payback.investmentLabel}${payback.projectedDateLabel ? ` · quita em ${payback.projectedDateLabel}` : ''}`}
-          </Text>
-        </View>
+        ) : null}
 
         <View style={styles.statusFooter}>
           <View>
