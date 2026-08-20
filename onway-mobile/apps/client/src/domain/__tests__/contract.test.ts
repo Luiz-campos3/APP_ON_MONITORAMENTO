@@ -1,11 +1,13 @@
 import {
   formatCurrency,
   invoiceReferenceLabel,
+  monthKeyFromRaw,
   toContract,
   toInvoice,
   toInvoiceSummary,
+  toOcrExtraction,
 } from '@/domain/contract';
-import type { ApiContract, ApiInvoice, InvoicesResponse } from '@/services/mobile-api';
+import type { ApiContract, ApiInvoice, ApiOcrResponse, InvoicesResponse } from '@/services/mobile-api';
 
 // Intl usa espaços não separáveis (NBSP/NNBSP) na moeda; normaliza para comparar.
 function plainSpaces(value: string) {
@@ -154,6 +156,86 @@ describe('toInvoiceSummary', () => {
       response({ resumo: { quantidade: 2, economiaAcumuladaReais: 861 }, paginacao: { page: 1, limit: 10, total: 2 } }),
     );
     expect(summary.hasMore).toBe(false);
+  });
+});
+
+describe('monthKeyFromRaw', () => {
+  it('mantém "YYYY-MM" e completa o zero do mês', () => {
+    expect(monthKeyFromRaw('2026-05')).toBe('2026-05');
+    expect(monthKeyFromRaw('2026-5')).toBe('2026-05');
+  });
+
+  it('converte "MM/YYYY" (formato do OCR) para "YYYY-MM"', () => {
+    expect(monthKeyFromRaw('05/2026')).toBe('2026-05');
+  });
+
+  it('expande ano de dois dígitos', () => {
+    expect(monthKeyFromRaw('05/26')).toBe('2026-05');
+  });
+
+  it('rejeita mês inválido ou entrada vazia', () => {
+    expect(monthKeyFromRaw('13/2026')).toBeNull();
+    expect(monthKeyFromRaw('')).toBeNull();
+    expect(monthKeyFromRaw(null)).toBeNull();
+  });
+});
+
+describe('toOcrExtraction', () => {
+  // Estrutura real capturada da API no aceite A2 (POST .../faturas/ocr).
+  function ocrResponse(overrides: Partial<ApiOcrResponse> = {}): ApiOcrResponse {
+    return {
+      campos: {
+        mes_ano: '05/2026',
+        consumo_kwh: 340,
+        consumo_faturado_kwh: null,
+        injetado_kwh: 415,
+        preco_unitario: null,
+        valor_pago: 192.5,
+        concessionaria: 'NEOENERGIA',
+        titular_nome: null,
+        confianca: { mes_ano: 'alta', valor_pago: 'alta' },
+      },
+      avisos: [],
+      titularidade: { status: 'indeterminado', motivo: 'Não foi possível ler o titular.' },
+      ocr_ref: 'ref-123',
+      ...overrides,
+    };
+  }
+
+  it('extrai os campos aninhados em snake_case e normaliza o mês', () => {
+    const result = toOcrExtraction(ocrResponse());
+    expect(result.saved).toBe(false);
+    expect(result.monthKey).toBe('2026-05');
+    expect(result.consumoKwh).toBe(340);
+    expect(result.injetadoKwh).toBe(415);
+    expect(result.valorPago).toBe(192.5);
+    expect(result.concessionaria).toBe('NEOENERGIA');
+  });
+
+  it('trata campos nulos sem quebrar (não vira 0)', () => {
+    const result = toOcrExtraction(
+      ocrResponse({ campos: { mes_ano: null, consumo_kwh: null, injetado_kwh: null, valor_pago: null, concessionaria: null } }),
+    );
+    expect(result.monthKey).toBeNull();
+    expect(result.consumoKwh).toBeNull();
+    expect(result.valorPago).toBeNull();
+    expect(result.concessionaria).toBeNull();
+  });
+
+  it('sinaliza fatura já gravada quando vem id', () => {
+    const result = toOcrExtraction({ id: 'fatura-99', campos: { mes_ano: '05/2026' } });
+    expect(result.saved).toBe(true);
+    expect(result.savedId).toBe('fatura-99');
+  });
+
+  it('coleta apenas avisos textuais não vazios', () => {
+    const result = toOcrExtraction(ocrResponse({ avisos: ['Confira o valor.', '', 42, null] as unknown[] }));
+    expect(result.warnings).toEqual(['Confira o valor.']);
+  });
+
+  it('não quebra com resposta vazia ou nula', () => {
+    expect(toOcrExtraction(null).monthKey).toBeNull();
+    expect(toOcrExtraction({}).consumoKwh).toBeNull();
   });
 });
 

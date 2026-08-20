@@ -2,6 +2,7 @@ import type {
   ApiContract,
   ApiContractService,
   ApiInvoice,
+  ApiOcrResponse,
   InvoicesResponse,
 } from '@/services/mobile-api';
 
@@ -168,6 +169,60 @@ export function toContract(api: ApiContract): Contract {
     activationDate: parseDate(api.dataAtivacao),
     services,
     plantNames: (api.usinas ?? []).map((plant) => normalizeText(plant.nome)).filter(Boolean),
+  };
+}
+
+// Normaliza "YYYY-MM", "MM/YYYY" ou "MM/YY" para a chave "YYYY-MM" usada no
+// seletor de mês e no POST de fatura. Devolve null se não reconhecer.
+export function monthKeyFromRaw(value: string | null | undefined): string | null {
+  const raw = normalizeText(value);
+  const iso = /^(\d{4})-(\d{1,2})$/.exec(raw);
+  const slash = /^(\d{1,2})\/(\d{2,4})$/.exec(raw);
+  let year: number | null = null;
+  let month: number | null = null;
+  if (iso) {
+    year = Number(iso[1]);
+    month = Number(iso[2]);
+  } else if (slash) {
+    month = Number(slash[1]);
+    year = Number(slash[2]) < 100 ? 2000 + Number(slash[2]) : Number(slash[2]);
+  }
+  if (year && month && month >= 1 && month <= 12) {
+    return `${year}-${String(month).padStart(2, '0')}`;
+  }
+  return null;
+}
+
+export type OcrExtraction = {
+  saved: boolean;
+  savedId: string | null;
+  monthKey: string | null;
+  consumoKwh: number | null;
+  injetadoKwh: number | null;
+  valorPago: number | null;
+  concessionaria: string | null;
+  warnings: string[];
+};
+
+// Traduz a resposta REAL do OCR (campos aninhados em `campos`, snake_case) para
+// o formato que a tela de nova fatura consome. Contrato confirmado no aceite A2
+// (19/08/2026): sem este mapeamento a tela pré-preenche tudo vazio.
+export function toOcrExtraction(res: ApiOcrResponse | null | undefined): OcrExtraction {
+  const savedId = typeof res?.id === 'string' && res.id ? res.id : null;
+  const campos = res?.campos ?? {};
+  const warnings = Array.isArray(res?.avisos)
+    ? res.avisos.filter((aviso): aviso is string => typeof aviso === 'string' && aviso.trim().length > 0)
+    : [];
+
+  return {
+    saved: savedId !== null,
+    savedId,
+    monthKey: monthKeyFromRaw(typeof campos.mes_ano === 'string' ? campos.mes_ano : null),
+    consumoKwh: optionalNumeric(typeof campos.consumo_kwh === 'number' ? campos.consumo_kwh : null),
+    injetadoKwh: optionalNumeric(typeof campos.injetado_kwh === 'number' ? campos.injetado_kwh : null),
+    valorPago: optionalNumeric(typeof campos.valor_pago === 'number' ? campos.valor_pago : null),
+    concessionaria: normalizeText(typeof campos.concessionaria === 'string' ? campos.concessionaria : '') || null,
+    warnings,
   };
 }
 

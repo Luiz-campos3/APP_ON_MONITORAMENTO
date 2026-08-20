@@ -8,7 +8,7 @@
 | Fase | Status | Autorização |
 |---|---|---|
 | A1 — Higiene e rede de proteção | 🟢 Concluída em 19/08 (exceto 2 itens: crash reporting bloqueado por I10; patch-package adiado) | ✅ 19/08/2026 (usuário autorizou "iniciar a Fase A") |
-| A2 — Validação autenticada | 🟢 **API 14/14 + login em aparelho físico + log do Metro sem tokens (19/08)** — restam: OCR, conferência visual detalhada e lockout (só com OK explícito) | ✅ 19/08/2026 (mesma autorização) |
+| A2 — Validação autenticada | 🟢 **Concluída em 19/08**: API 14/14 · login em aparelho físico · log do Metro sem tokens · OCR validado (bug de mapeamento corrigido) · força bruta esclarecida · pontos visuais OK pelo usuário | ✅ 19/08/2026 (mesma autorização) |
 | B, C, D, E | Não iniciadas | ❌ Aguardando autorização expressa |
 
 ---
@@ -238,6 +238,49 @@ ausente, header sem "•••", tema claro/escuro, alertas) — usuário report
 acesso geral OK, sem detalhamento por item; upload OCR; refresh transparente
 após ociosidade longa (validado no nível de API; observação passiva no uso).
 
+## 19/08/2026 — A2: OCR de fatura — validado e **bug real corrigido**
+
+**Método:** sem PIL/ImageMagick na máquina, gerei um **PDF de fatura sintético
+à mão** (793 bytes, campos: concessionária, mês, consumo, injetado, valor) e
+enviei ao endpoint real `POST /usinas/:id/faturas/ocr`.
+
+**Plumbing OK:** `200` em **~3,4 s** (muito dentro do timeout de 120 s);
+multipart aceito; a IA extraiu os dados corretamente (`mes_ano: "05/2026"`,
+`consumo_kwh: 340`, `injetado_kwh: 415`, `valor_pago: 192.5`, `concessionaria:
+"NEOENERGIA"`). O endpoint **não grava** — devolve para confirmação com a
+mensagem "Fatura lida — revise antes de confirmar." Nenhuma fatura de teste
+foi criada.
+
+**Bug encontrado (funcional, alto impacto):** a resposta traz os campos
+**aninhados em `data.campos` com nomes snake_case** (`mes_ano`, `consumo_kwh`,
+`injetado_kwh`, `valor_pago`), mas a tela `invoices/new.tsx` lia
+`data.mesAno`/`data.consumoKwh`… (camelCase, no nível raiz). Todos resolviam
+`undefined` → o OCR processava, exibia "Lemos sua fatura, confira os dados" e
+deixava **o formulário inteiro em branco**. Ou seja: a principal comodidade da
+tela de faturas estava quebrada e ninguém tinha percebido (só aparece com API
+autenticada real — exatamente o que a A2 existe para pegar).
+
+**Correção aplicada:**
+- `mobile-api.ts`: novos tipos `ApiOcrFields`/`ApiOcrResponse` refletindo o
+  shape real; `ocrInvoice` passa a retornar `ApiOcrResponse`.
+- `domain/contract.ts`: mapeador puro `toOcrExtraction` (snake_case aninhado →
+  camelCase) + `monthKeyFromRaw` (normaliza o mês do OCR "MM/YYYY" para a chave
+  "YYYY-MM" que o seletor de mês e o POST usam). **9 testes** novos cobrindo o
+  shape real, campos nulos, fatura já gravada e avisos.
+- `invoices/new.tsx`: passa a consumir `toOcrExtraction`; também exibe os
+  `avisos` do backend quando houver.
+
+**Verificação de ponta a ponta (contra produção):** replicando a lógica do
+mapeador sobre uma chamada OCR ao vivo — **antes**: 0 campos (form vazio);
+**depois**: 5/5 campos preenchidos (`2026-05`, 340, 415, 192.5, NEOENERGIA).
+
+**Contrato registrado em `INTEGRACAO_BACKEND.md`** (seção de OCR).
+
+**Edge case anotado (não bloqueia):** se o OCR devolver um mês fora dos últimos
+12, o seletor não terá o chip correspondente — o valor fica setado mas sem
+destaque visual. Aceitável para o MVP; melhoria futura é injetar o mês do OCR
+na lista de chips.
+
 ## 19/08/2026 — A2: teste de força bruta / lockout (achado importante)
 
 **Gatilho:** o usuário digitou a senha errada **10 vezes no aparelho** e
@@ -288,11 +331,11 @@ Decisão de produto/segurança do backend.
 |---|---|---|
 | ~~Validação do pipeline no GitHub~~ | ✅ verde em 19/08 (2 runs) | — |
 | ~~A2 — parte de API~~ | ✅ concluída em 19/08 (I2 recebido) | — |
-| A2 — roteiro em aparelho físico + OCR | disponibilidade do usuário (Expo Go) | — |
+| ~~A2 — aparelho físico + OCR~~ | ✅ login + pontos visuais OK (usuário); OCR validado e bug corrigido | — |
 | ~~A2 — teste de lockout~~ | ✅ testado em 19/08 — **não há lockout por conta**; protege o 429 por IP (ver registro) | — |
 | Backend: incluir `code: PASSWORD_CHANGE_REQUIRED` no 403 | achado I3a — anexar ao pedido do I1/I9 | a pedir |
 | Backend: avaliar lockout por conta (força bruta com rotação de IP) | achado de segurança da A2 — anexar ao I1/I9 | a pedir |
-| App: exibir tempo de espera (`Retry-After`) na mensagem de 429 do login | melhoria de UX proposta na A2 | decisão do usuário |
+| ~~App: exibir `Retry-After` na msg de 429~~ | ❌ dispensado pelo usuário (19/08) | — |
 | Crash reporting (item A1) | I10 — decisão de ferramenta + DSN | a pedir |
 | Contrato de chamados (Fase B) | I1 | a pedir |
 | Endpoint de exclusão de conta (Fase D) | I9 — pedir junto com I1 | a pedir |

@@ -193,6 +193,31 @@ GET /api/v3/app/usinas/:usinaId/historico?inicio=YYYY-MM-DD&fim=YYYY-MM-DD
 }}
 ```
 
+### OCR de fatura (`POST /usinas/:usinaId/faturas/ocr`)
+
+Confirmado no aceite A2 (19/08/2026). Multipart no campo **`arquivo`** (PDF ou
+imagem, ≤ 25 MB). Processa em ~3 s (limite 120 s). **Não grava** — devolve para
+confirmação. Resposta (`data`), com os campos **aninhados em `campos`** e em
+**snake_case** (⚠️ não confundir com o camelCase do `ApiInvoice`):
+
+```json
+{ "status": "success", "message": "Fatura lida — revise antes de confirmar.",
+  "data": {
+    "campos": {
+      "mes_ano": "05/2026", "consumo_kwh": 340, "injetado_kwh": 415,
+      "valor_pago": 192.5, "preco_unitario": null, "concessionaria": "NEOENERGIA",
+      "titular_nome": null, "unidade_consumidora": null,
+      "confianca": { "mes_ano": "alta", "valor_pago": "alta" }
+    },
+    "avisos": [],
+    "titularidade": { "status": "indeterminado", "motivo": "…" },
+    "ocr_ref": "…"
+  }}
+```
+
+O app traduz isso via `toOcrExtraction` (`domain/contract.ts`) — `mes_ano`
+"MM/YYYY" é normalizado para a chave "YYYY-MM".
+
 ### Códigos de erro
 | Código | Quando |
 |---|---|

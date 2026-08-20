@@ -178,6 +178,29 @@ export type InvoiceUpload = {
   mimeType: string;
 };
 
+// Shape REAL do OCR confirmado no aceite A2 (19/08/2026): os campos extraídos
+// vêm aninhados em `campos` com nomes snake_case — NÃO no nível raiz nem em
+// camelCase. Ver `toOcrExtraction` em domain/contract.ts.
+export type ApiOcrFields = {
+  mes_ano?: string | null;
+  consumo_kwh?: number | null;
+  injetado_kwh?: number | null;
+  valor_pago?: number | null;
+  preco_unitario?: number | null;
+  concessionaria?: string | null;
+  [key: string]: unknown;
+};
+
+export type ApiOcrResponse = {
+  // Presente apenas se o backend já gravar a fatura (hoje devolve p/ confirmação).
+  id?: string;
+  campos?: ApiOcrFields;
+  avisos?: unknown[];
+  titularidade?: { status?: string; motivo?: string; [key: string]: unknown };
+  ocr_ref?: string;
+  [key: string]: unknown;
+};
+
 type ApiEnvelope<T> = {
   status: 'success';
   message?: string;
@@ -573,7 +596,7 @@ export const mobileApi = {
   // OCR de PDF/imagem: multipart no campo `arquivo`. Pode retornar campos
   // extraídos (sem id) para confirmação, ou uma fatura já gravada (com id).
   ocrInvoice: (usinaId: string, file: InvoiceUpload) =>
-    authenticatedSend<Partial<ApiInvoice> & Record<string, unknown>>(
+    authenticatedSend<ApiOcrResponse>(
       `/api/v3/app/usinas/${encodeURIComponent(usinaId)}/faturas/ocr`,
       () => {
         const form = new FormData();

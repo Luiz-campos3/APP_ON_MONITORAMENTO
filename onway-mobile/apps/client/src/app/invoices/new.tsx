@@ -10,7 +10,7 @@ import { Button, Card, Field } from '@/components/ui';
 import { brand, radius, spacing } from '@/constants/theme';
 import { useClientData } from '@/contexts/client-data-context';
 import { useOnWayTheme } from '@/contexts/theme-context';
-import { invoiceReferenceLabel } from '@/domain/contract';
+import { invoiceReferenceLabel, toOcrExtraction } from '@/domain/contract';
 import { apiErrorMessage, MAX_UPLOAD_BYTES, mobileApi, type InvoiceUpload } from '@/services/mobile-api';
 
 function monthOptions(count = 12) {
@@ -87,22 +87,23 @@ export default function NewInvoiceScreen() {
     setReading(true);
     setOcrOk(false);
     try {
-      const data = await mobileApi.ocrInvoice(plantId, file);
+      const extraction = toOcrExtraction(await mobileApi.ocrInvoice(plantId, file));
 
       // Se o backend já gravou (retornou id), vamos direto ao detalhe.
-      if (typeof data?.id === 'string' && data.id) {
-        router.replace(`/invoices/${data.id}`);
+      if (extraction.saved && extraction.savedId) {
+        router.replace(`/invoices/${extraction.savedId}`);
         return;
       }
 
       // Caso contrário, pré-preenche os campos para o usuário confirmar.
-      if (typeof data?.mesAno === 'string') setMesAno(data.mesAno);
-      setConsumo(toInput(data?.consumoKwh));
-      setInjetado(toInput(data?.injetadoKwh));
-      setValor(toInput(data?.valorPago));
-      if (typeof data?.concessionaria === 'string') setConcessionaria(data.concessionaria);
+      if (extraction.monthKey) setMesAno(extraction.monthKey);
+      setConsumo(toInput(extraction.consumoKwh));
+      setInjetado(toInput(extraction.injetadoKwh));
+      setValor(toInput(extraction.valorPago));
+      if (extraction.concessionaria) setConcessionaria(extraction.concessionaria);
       setOcrOk(true);
-      setOcrNote('Lemos sua fatura. Confira os dados abaixo e confirme.');
+      const base = 'Lemos sua fatura. Confira os dados abaixo e confirme.';
+      setOcrNote(extraction.warnings.length ? `${base} ${extraction.warnings.join(' ')}` : base);
     } catch (readError) {
       setOcrNote(`${apiErrorMessage(readError)} Você pode preencher manualmente.`);
     } finally {
