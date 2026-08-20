@@ -238,6 +238,41 @@ ausente, header sem "•••", tema claro/escuro, alertas) — usuário report
 acesso geral OK, sem detalhamento por item; upload OCR; refresh transparente
 após ociosidade longa (validado no nível de API; observação passiva no uso).
 
+## 19/08/2026 — A2: teste de força bruta / lockout (achado importante)
+
+**Gatilho:** o usuário digitou a senha errada **10 vezes no aparelho** e
+relatou que **nenhuma mensagem de "15 minutos" / conta bloqueada apareceu**.
+
+**Investigação (do Mac, que compartilha o IP do hotspot com o iPhone):**
+- 1ª tentativa com senha errada logo após → `429 "Muitas tentativas de login,
+  aguarde."` com `Retry-After: 28`. (O IP já estava limitado pelas 10
+  tentativas do celular.)
+- Após aguardar ~40 s, **senha correta → `200 "login ok"`**.
+
+**Conclusão — divergência de contrato (não é bug do app):**
+1. **Não existe lockout por conta.** O contrato antigo dizia "5 falhas em 15
+   min → 403 Conta temporariamente bloqueada". Isso **não se confirma**: 40 s
+   após a rajada, a senha correta autenticou. Se houvesse lock de 15 min por
+   conta, o 200 não aconteceria. `INTEGRACAO_BACKEND.md` corrigido.
+2. **O que protege é o rate limit da borda por IP** — `429` com `Retry-After`
+   de ~30 s, mensagem "Muitas tentativas de login, aguarde." (não 15 min).
+3. **O app exibe a mensagem do 429 corretamente** (`login.tsx` mostra
+   `apiErrorMessage` → a `message` do servidor), então o usuário VÊ um aviso —
+   só não é o "15 minutos" que o roteiro (baseado no contrato errado)
+   esperava. Portanto o critério de aceite "lockout 5x → mensagem própria" foi
+   redefinido: o comportamento real é o 429 por IP, e ele funciona.
+
+**Achado de segurança (para o backend — anexar ao I1/I9):** rate limit por IP
+não barra ataque distribuído / com rotação de IP contra **uma** conta.
+Recomenda-se avaliar um **lockout por conta** (ex.: N falhas → atraso
+progressivo ou bloqueio temporário do login daquela conta, independente de IP).
+Decisão de produto/segurança do backend.
+
+**Melhoria de UX possível no app (proposta, não aplicada):** o caminho de
+`login()` usa `raw()` + `unwrap()` e **descarta o `Retry-After`** (só
+`authenticatedGet` o usa, para auto-retry). Dá para exibir "tente novamente em
+~30 s" em vez da mensagem genérica. Pequeno; aguardando decisão do usuário.
+
 ## Desvios do planejado (consolidado)
 
 | Desvio | Justificativa | Ação futura |
@@ -254,8 +289,10 @@ após ociosidade longa (validado no nível de API; observação passiva no uso).
 | ~~Validação do pipeline no GitHub~~ | ✅ verde em 19/08 (2 runs) | — |
 | ~~A2 — parte de API~~ | ✅ concluída em 19/08 (I2 recebido) | — |
 | A2 — roteiro em aparelho físico + OCR | disponibilidade do usuário (Expo Go) | — |
-| A2 — teste de lockout (5 falhas) | OK explícito do usuário (bloqueia a conta temporariamente) | a pedir |
+| ~~A2 — teste de lockout~~ | ✅ testado em 19/08 — **não há lockout por conta**; protege o 429 por IP (ver registro) | — |
 | Backend: incluir `code: PASSWORD_CHANGE_REQUIRED` no 403 | achado I3a — anexar ao pedido do I1/I9 | a pedir |
+| Backend: avaliar lockout por conta (força bruta com rotação de IP) | achado de segurança da A2 — anexar ao I1/I9 | a pedir |
+| App: exibir tempo de espera (`Retry-After`) na mensagem de 429 do login | melhoria de UX proposta na A2 | decisão do usuário |
 | Crash reporting (item A1) | I10 — decisão de ferramenta + DSN | a pedir |
 | Contrato de chamados (Fase B) | I1 | a pedir |
 | Endpoint de exclusão de conta (Fase D) | I9 — pedir junto com I1 | a pedir |

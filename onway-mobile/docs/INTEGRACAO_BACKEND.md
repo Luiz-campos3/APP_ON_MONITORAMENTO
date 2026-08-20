@@ -61,7 +61,16 @@ renovar quando o access expira.
   anti-roubo) → o app cai para a tela de login.
 - **Mensagens genéricas:** senha errada e e-mail inexistente retornam o mesmo
   `401 "Credenciais inválidas"` (não revele "e-mail não existe" na UI).
-- **Lockout:** 5 falhas em 15 min → `403 "Conta temporariamente bloqueada"`.
+- **Proteção contra força bruta (contrato REAL, medido em 19/08/2026):** o que
+  existe é o **rate limit da borda por IP** — após ~5–10 falhas de login, novas
+  tentativas recebem `429 "Muitas tentativas de login, aguarde."` com header
+  `Retry-After` de **~30 s** (não 15 min). **NÃO há lockout por conta**: após a
+  janela do 429 expirar (~30–40 s), a senha correta autentica normalmente —
+  testado. ⚠️ A afirmação anterior ("5 falhas → 403 Conta temporariamente
+  bloqueada, 15 min") **não se confirmou** e foi corrigida aqui. Implicação de
+  segurança em aberto: rate limit é **por IP**, logo um ataque distribuído/com
+  rotação de IP não é barrado no nível da conta — decidir com o backend se um
+  lockout por conta é desejável (ver `EXECUCAO_FASE_A.md`).
 - **`mustChangePassword`:** vem no login/`/me`; quando `true`, leve o usuário a
   trocar a senha via `POST /auth/change-password`.
 
@@ -189,7 +198,7 @@ GET /api/v3/app/usinas/:usinaId/historico?inicio=YYYY-MM-DD&fim=YYYY-MM-DD
 |---|---|
 | `400` | validação (ex.: data inválida, intervalo > 366 dias, id de usina não-UUID) |
 | `401` | sem/token inválido/expirado, ou credenciais inválidas |
-| `403` | conta bloqueada por lockout · troca de senha obrigatória · senha atual inválida no change-password (distinguir pela `message` — envelopes sem `code`, ver contrato confirmado acima) |
+| `403` | troca de senha obrigatória · senha atual inválida no change-password (distinguir pela `message` — envelopes sem `code`, ver contrato confirmado acima). **Não** há 403 de lockout por conta — ver nota de força bruta acima |
 | `404` | usina fora do escopo do usuário |
 | `429` | rate limit (login/refresh) |
 
@@ -302,7 +311,8 @@ const usinas = await getUsinas();    // 4 usinas
 3. `login(...)` com a conta de teste → esperar **4 usinas** em `/usinas`,
    `quantidadeUsinas: 4` no dashboard, detalhe e histórico OK.
 4. Tentar abrir uma usina de outro cliente (UUID aleatório) → deve dar `404`.
-5. Errar a senha 5x → `403` de lockout com mensagem própria.
+5. Errar a senha várias vezes → `429 "Muitas tentativas de login, aguarde."`
+   com `Retry-After ~30s` (rate limit por IP; **não** há lockout por conta).
 6. Esperar o access token expirar (~15 min) → refresh transparente, sem voltar
    ao login.
 
