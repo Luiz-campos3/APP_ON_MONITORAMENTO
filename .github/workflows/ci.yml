@@ -1,0 +1,59 @@
+# CI obrigatório do OnWay Cliente (Fase A1 do PLANO_IMPLANTACAO_V2.md).
+# Gate do npm audit em `critical`: as vulnerabilidades high restantes vivem no
+# toolchain Expo/Metro e só resolvem no upgrade de SDK — triagem registrada em
+# onway-mobile/docs/EXECUCAO_FASE_A.md. Subir o gate para `high` no SDK 57+.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  EXPO_NO_TELEMETRY: '1'
+  # O typecheck exige uma URL https válida apenas para satisfazer o tipo da env.
+  EXPO_PUBLIC_API_URL: https://app.onwaytech.cloud
+
+defaults:
+  run:
+    working-directory: onway-mobile/apps/client
+
+jobs:
+  quality:
+    name: Typecheck, lint, testes e audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: onway-mobile/apps/client/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint . --max-warnings 0
+
+      - name: Testes unitários
+        run: npx jest --ci
+
+      - name: npm audit (gate em critical)
+        run: npm audit --audit-level=critical
+
+  secrets:
+    name: Varredura de segredos (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
