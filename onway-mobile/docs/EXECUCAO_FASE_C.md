@@ -548,3 +548,22 @@ Quando #40 for publicado: (1) validar o contrato vivo contra a conta de teste;
 cadastrada"); (5) parar de usar `expectativaAnualKwh`. Só então registrar o contrato
 em INTEGRACAO_BACKEND.md (após minha validação contra produção). Mudança de app pequena
 e backward-compatible (null hoje → comportamento atual; número após deploy → acende).
+
+## Expectativa no app — VALIDADA ao vivo e mergeada (20/08)
+
+#40 em produção. Probe contra a conta de teste (4 usinas Sungrow) confirmou o
+contrato: os 5 campos presentes, `fonteExpectativa=historico` nas 4,
+`expectativaMesAteHojeKwh` ≈ 61% do mês cheio (coerente com ~19 de 31 dias), e o
+"% da previsão" (`geracaoMes/mesAteHoje`) deu **106 / 107 / 109 / 105%** — geração
+levemente acima do esperado-até-ontem, plausível. A fórmula do app confere ao
+número (8411,4 ÷ 7917,3 = 106%).
+
+**Branch `feat/expectativa-app-40` mergeado na `main`.** Contrato registrado em
+INTEGRACAO_BACKEND.md (seção `/usinas`). Ressalva: a conta de teste só tem usinas
+`historico`; o caminho `sem_historico` (usina nova → kWh null → "Sem histórico
+ainda") está coberto por teste unitário, não exercido ao vivo. Falta o pente-fino
+visual no aparelho — aí decido se adiciono a linha "meta do mês"
+(`expectativaMensalKwh`, campo já pronto no modelo).
+
+**Fecha a frente de expectativa/#36.** Restam na Fase C: alertas (feature de app) e
+push+preferências — ambas dependem de backend.

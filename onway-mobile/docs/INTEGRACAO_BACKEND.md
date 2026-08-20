@@ -220,12 +220,31 @@ POST /api/v3/app/usinas/:usinaId/chamados      abre um chamado (escopo = usina)
   "geracaoAcumuladaKwh": 45678.9,
   "geracaoMesKwh": 1500.0,
   "expectativaMensalKwh": 1800.0,
+  "expectativaMesAteHojeKwh": 1180.0,
+  "fonteExpectativa": "historico",
   "expectativaAnualKwh": 21600.0,
   "ultimaLeitura": "2026-07-06T11:50:00.000Z",
   "fonteLeitura": "sungrow"
 } ] }
 ```
 > Nunca vêm credenciais de portal, `vendor_plant_id` ou payload bruto.
+
+**Expectativa de geração (issue #36 / PR #40, deployado e validado contra a conta
+de teste em 20/08/2026).** Derivada de `usina_leitura` (P80 do rendimento
+específico do histórico da própria usina), vendor-independent:
+- `expectativaMesAteHojeKwh` (number | null): esperado **acumulado até ONTEM** — é
+  o **denominador do "% da previsão"** (o app compara `geracaoMesKwh` mês-até-hoje
+  com este, nunca com o mês cheio, senão toda usina pareceria ruim no início do mês).
+- `expectativaMensalKwh` (number | null): **meta do mês cheio** (só para exibir; não
+  é denominador do %). Antes do #40 este campo não vinha para 6/7 fabricantes.
+- `fonteExpectativa` (`'historico'` | `'sem_historico'`): quando `sem_historico`
+  (usina sem série suficiente) **os dois kWh vêm `null`** — o app degrada com rótulo
+  próprio ("Sem histórico ainda"), sem número inventado.
+- `expectativaAnualKwh`: **morto** (null p/ quase toda a frota) — o app não usa.
+
+Validação ao vivo (4 usinas Sungrow da conta de teste, 20/08): 5 campos presentes,
+`fonteExpectativa=historico`, `geracaoMes/mesAteHoje` = 105–109%, `mesAteHoje` ≈ 61%
+do mês cheio (≈ 19 de 31 dias). Cobertura: 342 de 525 usinas com expectativa viva.
 
 ### `/usinas/:id/historico`
 `inicio`/`fim` (opcionais) ativam a visão "período" (intervalo máx. 366 dias).
