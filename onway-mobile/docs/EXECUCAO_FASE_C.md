@@ -567,3 +567,37 @@ visual no aparelho — aí decido se adiciono a linha "meta do mês"
 
 **Fecha a frente de expectativa/#36.** Restam na Fase C: alertas (feature de app) e
 push+preferências — ambas dependem de backend.
+
+## Central de alertas — prompt de backend (20/08)
+
+Última feature de leitura da Fase C. Hoje o app deriva alertas LOCALMENTE
+(`toPlantAlerts` em domain/client.ts: offline/atenção a partir de usinas.status);
+usado na aba `(tabs)/alerts.tsx` e no badge do dashboard. Objetivo: consumir um
+feed real do backend, por usuário, com estado de leitura (badge).
+
+**Crux levantado (decisão do backend):** offline/comunicação hoje vem da fonte VIVA
+`usinas.status`/`monitoramentoAtivo` (todos os vendors). A tabela `alertas` cobre
+baixa_geracao + microinversor Enphase + sla, mas comunicação/offline na tabela eram
+só Enphase. Trocar puro pela tabela PERDERIA offline de Sungrow/GoodWe/etc.
+**Proposta:** backend expor UM feed unificado (tabela + comunicação derivada ao vivo,
+junção no servidor) para o app ter lista única honesta e aposentar a derivação local.
+Alternativa: app segue derivando comunicação localmente e só busca a tabela.
+
+**Rotas propostas (authenticateApp, escopo por usuário):**
+1. `GET /api/v3/app/alertas?status=aberto|resolvido|todos` → `{alertas[], total, naoLidos}`;
+   por alerta: id, usinaId, usinaNome, cidade, tipo(enum), severidade(warning|critical),
+   titulo, mensagem, abertoEm, resolvidoEm, status, lido(por usuário).
+2. `GET /api/v3/app/alertas/:id` (alheio → 404); histórico de severidade opcional.
+3. `POST /api/v3/app/alertas/marcar-lidos` (body {ids?}; sem ids = todos os abertos)
+   → `{naoLidos}`.
+
+**Pedidos ao backend:** enum de `tipo` client-facing (sla_vencido parece operacional)
++ rótulo/tom por tipo + mapeamento de severidade; titulo/mensagem prontos (não
+hardcodar copy no app); confirmar deep link `{tipo:'alerta', usinaId, alertaId}`
+(toque → /plant/[id]); garantir ≥1 alerta na conta de teste (idealmente 1 aberto +
+1 resolvido) para validação.
+
+**Estado:** prompt entregue ao usuário. Aguarda contrato real do backend para
+registrar em INTEGRACAO_BACKEND.md e validar contra a conta de teste. SEM código de
+app até o contrato voltar (governança). Depois de alertas, resta push+preferências
+(exige dev build EAS) para fechar a Fase C.
