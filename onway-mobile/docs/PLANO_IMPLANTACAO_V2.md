@@ -103,7 +103,7 @@ O gap mais grave que restou: o cliente "abre chamado" e **a OnWay nunca fica sab
 
 **Critério de saída:** ⚠️ parcial — a integração foi validada de ponta a ponta contra produção (criar JSON/multipart, listar, detalhe/timeline, validação de 5 chars). **Falta a confirmação de que o chamado aparece no portal da operação** (só a OnWay verifica; a criação retornou `canalOrigem:app`) e o teste visual no aparelho.
 
-### Fase C — Alertas reais, push e sessões · ~2–3 semanas · depende de I7 (backend)
+### Fase C — Alertas reais, push e sessões · ~2–3 semanas · depende de I7 (backend) · **🟡 INICIADA em 20/08/2026** (backend-first — prompt de contratos enviado; ver `EXECUCAO_FASE_C.md`)
 
 **Backend (pré-requisito):**
 - [ ] `GET /alertas` com a regra oficial validada no servidor + marcação de leitura (I7).
