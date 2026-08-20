@@ -8,7 +8,7 @@
 | Fase | Status | Autorização |
 |---|---|---|
 | A1 — Higiene e rede de proteção | 🟢 Concluída em 19/08 (exceto 2 itens: crash reporting bloqueado por I10; patch-package adiado) | ✅ 19/08/2026 (usuário autorizou "iniciar a Fase A") |
-| A2 — Validação autenticada | ⛔ Bloqueada por I2 (credenciais de teste) | ✅ 19/08/2026 (mesma autorização; executa quando I2 chegar) |
+| A2 — Validação autenticada | 🟡 Iniciada em 19/08 — **bloqueada: API rejeitou as credenciais recebidas** (ver registro) | ✅ 19/08/2026 (mesma autorização) |
 | B, C, D, E | Não iniciadas | ❌ Aguardando autorização expressa |
 
 ---
@@ -121,6 +121,32 @@ push/PR:
 ## 19/08/2026 — A1: `npx expo install --check`
 
 "Dependencies are up to date" — nenhuma divergência de versão com o SDK 54.
+
+## 19/08/2026 — A2: primeira tentativa (bloqueada — credenciais inválidas)
+
+**Recebido:** usuário forneceu credenciais de teste via `.env` local (arquivo
+no `.gitignore`; e-mail/senha **não** foram commitados nem registrados em log
+ou neste documento).
+
+**Executado:** script de aceite somente-leitura (13 verificações: login, /me,
+dashboard, usinas, detalhe, histórico, contrato, faturas, 404 de usina alheia,
+refresh + rotação, logout e rejeição de refresh pós-logout — sem teste de
+lockout e sem OCR, que são intrusivos/mutação).
+
+**Resultado:** `POST /auth/login` → **HTTP 401 · "Credenciais inválidas"**
+(envelope de erro sem campo `code`). Fluxo abortado no passo 1. Foram feitas
+apenas **2 tentativas** (limite da borda: 10 falhas/15min por IP) — sem
+insistência para não travar a conta/IP.
+
+**Hipóteses (em ordem de probabilidade):** (a) senha divergente/typo no
+repasse; (b) a conta é do portal web e **não** existe como usuário do app
+(`cliente_app`) — a API do app tem base/tipo próprio de usuário; (c) usuário
+ainda não criado pelo operador. **Aguardando confirmação do usuário para
+repetir** — o script está pronto e reexecuta em segundos.
+
+**Consideração de segurança:** manter credenciais no `.env` é aceitável para o
+teste (ignorado pelo git; chaves sem prefixo `EXPO_PUBLIC_` não são embutidas
+no bundle), mas a senha deve ser **rotacionada após a validação da A2**.
 
 ## Desvios do planejado (consolidado)
 
