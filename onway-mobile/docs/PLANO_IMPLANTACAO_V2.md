@@ -1,10 +1,10 @@
 # Plano de Implantação V2 — OnWay Cliente
 
-**Data:** 13/08/2026 · **Revisão 1:** 19/08/2026
+**Data:** 13/08/2026 · **Revisão 1:** 19/08/2026 · **Revisão 2:** 20/08/2026
 **Baseline:** commit `34634c4` (pós-migração para a API pública)
 **Substitui:** `PLANO_IMPLANTACAO_GAPS.md` (V1, 13/08/2026)
 **Referências:** `PLANO_DESENVOLVIMENTO_MOBILE_ONWAY.md` (plano macro, fases 0–9) e `INTEGRACAO_BACKEND.md` (contrato da API)
-**Registro de execução:** `EXECUCAO_FASE_A.md` (log por item, considerações e desvios)
+**Registro de execução:** `EXECUCAO_FASE_A.md`, `EXECUCAO_FASE_B.md`, `EXECUCAO_FASE_C.md`, `EXECUCAO_FASE_D.md` (log por item, considerações e desvios)
 
 > **Revisão 1 (19/08/2026)** — ajustes de sequência e segurança, autorizados pelo usuário:
 > 1. Fase A dividida em **A1** (higiene, sem dependência externa — começa já) e **A2** (validação autenticada — dispara quando I2 chegar).
@@ -13,6 +13,13 @@
 > 4. Fase B ganha requisito explícito de **remoção de EXIF** (GPS/dispositivo) das fotos antes do upload — LGPD.
 > 5. **Payback fictício ocultado por flag já na A1** (não esperar o fim da Fase C); religa quando I5 chegar.
 > 6. CI nasce com `npm audit` (gate em `critical` — ver triagem no registro de execução) e scanner de segredos (gitleaks).
+
+> **Revisão 2 (20/08/2026) — estado real após execução:**
+> - **Fase A** ✅ concluída (A1 + A2 validadas contra produção; resta só I10/crash reporting).
+> - **Fase B** ✅ implementada e validada (chamados reais).
+> - **Fase C** — ✅ **sessões**, ✅ **alertas** (feed unificado real do servidor, v1.7.1) e ✅ **expectativa / "% da previsão"** (issue #36 + PR #40) entregues e no ar. Falta só **push + preferências** (prompt no backend; teste exige dev build + I6). **Dev build EAS já preparado** (`expo-dev-client`; runbook em `EAS_DEV_BUILD.md`).
+> - **Fase D** 🟡 iniciada em paralelo — **fluxo de exclusão de conta (I9)** construído e *staged* (branch `feat/exclusao-conta`; contrato recebido, PR #42 aguarda deploy) e **passe de acessibilidade** construído e *staged* (branch `feat/acessibilidade`; aguarda teste de VoiceOver). Restam I4 (jurídico), I6 (Apple), I5 (payback), submissão.
+> - **Inputs recebidos:** I1, I2, I3, I7, I9. **Pendentes:** I4, I5, I6, I8, I10.
 
 ---
 
@@ -31,7 +38,7 @@ A V1 foi escrita de manhã; à tarde a migração para a API pública entregou p
 | Tratamento de 429/403/lockout, timeout OCR, limite 25 MB | ✅ Implementados no cliente HTTP |
 | Reuso frágil de FormData no retry | ✅ Corrigido (factory por tentativa) |
 
-**Continuam abertos da V1:** chamados reais, push/alertas/dispositivos, sessões, payback, privacidade/exclusão de conta, testes, CI, TestFlight, melhorias de faturas, dead code.
+**Fechados desde a V1 (20/08):** ✅ CI + testes, chamados reais, alertas reais, sessões, expectativa/"% da previsão", exclusão de conta (fluxo staged). **Continuam abertos:** push/dispositivos/preferências, payback (I5), textos jurídicos (I4), TestFlight/submissão (I6), melhorias de faturas (Fase E), crash reporting (I10).
 
 ---
 
@@ -42,21 +49,21 @@ Nada abaixo é código: são decisões ou artefatos que só a OnWay/backend pode
 | # | Input necessário | O que destrava | Observação |
 |---|---|---|---|
 | I1 | ~~**Contrato das rotas de chamados**~~ | Fase B inteira | ✅ **RECEBIDO (20/08/2026)**. Rotas em produção desde 14/07; doc `src/docs/app_chamados_api.md`; contrato em `INTEGRACAO_BACKEND.md`. Criação aninhada na usina (`POST /usinas/:id/chamados`), foto no campo `foto` ≤10MB, sem canal de mensagens. **Fase B destravada — só falta autorização** |
-| I2 | **Credenciais da conta de teste** | Fase A (validação dos 8 critérios de aceite da migração) | Entregar por canal seguro, nunca commitar |
-| I3 | Confirmação do **envelope do 403** `PASSWORD_CHANGE_REQUIRED` (campo `code`?) e da **semântica do 401** em change-password (senha atual errada ≠ sessão expirada) | Fase A | O app assumiu `code` no envelope de erro e trata 401 pós-refresh como "senha atual incorreta" |
+| I2 | ~~**Credenciais da conta de teste**~~ | Fase A | ✅ **RECEBIDO**. `luiz.onwayenergy@gmail.com` (cliente_app, 4 usinas/300kWp, contrato+faturas); senha só no `.env` local (gitignorado). Usada em toda validação da A2 em diante |
+| I3 | ~~Confirmação do **envelope do 403** e da **semântica do 401**~~ | Fase A | ✅ **CONFIRMADO (com correção do backend, v1.6.0)**: o `code` do 403 vem aninhado em `errors.code` (app corrigido com `readErrorCode`); `SENHA_ATUAL_INVALIDA` é **403** (não 401). Contrato em `INTEGRACAO_BACKEND.md` |
 | I4 | **Textos jurídicos**: política de privacidade, termos de uso, política de exclusão de conta (LGPD) | Fase D | Sem isso a Apple reprova; hoje são placeholders em `settings/privacy.tsx` |
 | I5 | **Custo do sistema e tarifa por contrato/usina** (ou decisão de ocultar o card) | Payback honesto na Home | Hoje: `COST_PER_KWP = 4200` e `TARIFF_PER_KWH = 0.98` inventados em `domain/payback.ts` |
 | I6 | **Conta Apple Developer da empresa** + acesso ao App Store Connect | Fase D (TestFlight) | `eas.json > submit` está vazio; projectId EAS já existe |
-| I7 | **Regra oficial de alerta no servidor** (usina offline / baixa geração) | Fase C | Hoje os alertas são derivados no client a partir da lista de usinas |
+| I7 | ~~**Regra oficial de alerta no servidor**~~ | Fase C | ✅ **RECEBIDO (v1.7.1)**. Feed unificado `GET /alertas` (tabela `alertas` saneada + comunicação derivada ao vivo p/ todos os vendors) + `marcar-lidos` por usuário; regra `baixa_geracao` na frota por base de vizinhos (PR #38). Contrato em `INTEGRACAO_BACKEND.md`. A derivação local `toPlantAlerts` foi **aposentada** |
 | I8 | **Arquivos da fonte Gilmer** (.otf/.ttf licenciados) | Identidade visual completa | `IDENTIDADE_VISUAL.md` registra que o app usa fonte de sistema até os arquivos chegarem |
-| I9 | **Endpoint de exclusão de conta** no backend (contrato: rota, efeito nos dados, prazo LGPD) | Fluxo de exclusão da Fase D — a Apple exige início da exclusão dentro do app | *(Revisão 1)* Dependência oculta descoberta na revisão: `settings/privacy.tsx` registra que a API não possui o endpoint. Pedir **junto com I1** — mesma conversa com o backend |
+| I9 | ~~**Endpoint de exclusão de conta**~~ | Fluxo de exclusão da Fase D | ✅ **RECEBIDO (PR #42, aguarda deploy)**. `POST /me/exclusao {currentPassword}`: conta=login (provado por FK graph), soft-delete+anonimização (LGPD art. 37), imediato/irreversível, dados comerciais retidos por lei. Fluxo do app construído (`settings/delete-account.tsx`). ⚠️ prazos da constante `RETENCAO` precisam da revisão jurídica do **I4** |
 | I10 | **Conta/DSN de crash reporting** (ex.: Sentry — projeto + DSN) | Item de instrumentação da Fase A1 (antecipado da Fase D) | *(Revisão 1)* Sem custo obrigatório (tier gratuito atende o piloto); decisão de ferramenta é do usuário |
 
 ---
 
 ## 3. Fases de implantação
 
-> Dependência técnica transversal: a camada HTTP (`raw()` em `mobile-api.ts`) ainda só aceita **GET e POST**. Adicionar PATCH/DELETE é pré-requisito de qualquer edição/exclusão (faturas, sessões, dispositivos) — tarefa pequena, já que `requestWithAuth` foi unificado na migração.
+> ~~Dependência técnica transversal: a camada HTTP só aceita GET e POST.~~ ✅ **Resolvido na A1**: `authenticatedSend`/`authenticatedDelete` (PATCH/DELETE) já existem em `mobile-api.ts` e sustentaram sessões, alertas e exclusão de conta.
 
 ### Fase A — Validar a migração e blindar a base · ~1 semana
 
@@ -103,37 +110,38 @@ O gap mais grave que restou: o cliente "abre chamado" e **a OnWay nunca fica sab
 
 **Critério de saída:** ⚠️ parcial — a integração foi validada de ponta a ponta contra produção (criar JSON/multipart, listar, detalhe/timeline, validação de 5 chars). **Falta a confirmação de que o chamado aparece no portal da operação** (só a OnWay verifica; a criação retornou `canalOrigem:app`) e o teste visual no aparelho.
 
-### Fase C — Alertas reais, push e sessões · ~2–3 semanas · depende de I7 (backend) · **🟡 INICIADA em 20/08/2026** (backend-first — prompt de contratos enviado; ver `EXECUCAO_FASE_C.md`)
+### Fase C — Alertas reais, push e sessões · **🟢 QUASE COMPLETA (20/08/2026)** — sessões, alertas e expectativa no ar; falta só push+preferências. Ver `EXECUCAO_FASE_C.md`.
 
 **Backend (pré-requisito):**
-- [ ] `GET /alertas` com a regra oficial validada no servidor + marcação de leitura (I7).
-- [ ] Registro de dispositivos (`POST/DELETE /devices`: push token, plataforma, versão) e preferências de notificação por usuário.
-- [ ] `GET /me/sessions` + `DELETE /me/sessions/:id`.
-- [ ] Envio via Expo Push API com processamento de receipts e limpeza de tokens inválidos.
+- [x] `GET /alertas` com a regra oficial + marcação de leitura (I7) — **feed unificado no ar (v1.7.1)**: tabela `alertas` saneada (bug de ciclo de vida corrigido no v1.6.1) + comunicação derivada ao vivo p/ todos os vendors; `baixa_geracao` na frota por base de vizinhos (PR #38).
+- [ ] Registro de dispositivos (push token, plataforma) e preferências de notificação por usuário — **prompt enviado (push+prefs); aguarda contrato**.
+- [x] `GET /me/sessions` + `DELETE /me/sessions/:familyId` — **PR #37, no ar**.
+- [ ] Envio via Expo Push API com receipts e limpeza de tokens inválidos — **parte do prompt de push**.
 
 **App:**
-- [ ] `expo-notifications`: registro no login, remoção no logout, permissão com opt-in claro.
-- [ ] Deep link de push → detalhe da usina/alerta (scheme `onwayclient` já existe). Push exige dev build — não validar no Expo Go.
-- [ ] Central de alertas consumindo o endpoint. *(Correção 20/08: `toPlantAlerts` **não** é derivação local falsa — formata `temAlerta`/`status`/`alertaMensagem` calculados no servidor a cada coleta, que estão **vivos**. A tabela `alertas` está **congelada** desde 29/07 por um bug de ciclo de vida. NÃO trocar a derivação viva pela tabela antes do backend consertar o ciclo + adicionar produtor de conectividade + leitura por usuário — senão a tela mostraria dados de julho.)*
-- [ ] Reintroduzir as categorias "Relatório mensal" e "Atendimento" nas preferências — agora com efeito real, sincronizadas com o backend.
-- [x] `settings/sessions.tsx`: listagem e revogação reais — **implementado e validado contra produção em 20/08** (backend PR #37; revogação por família, "desconectar outros", `isCurrent`). Ver `EXECUCAO_FASE_C.md`.
-- [ ] Dados mínimos no texto da notificação (nada sensível na tela bloqueada).
+- [ ] `expo-notifications`: registro no login, remoção no logout, opt-in claro — **aguarda contrato de push + dev build (I6/APNs)**. Dev build EAS já preparado (`expo-dev-client`).
+- [ ] Deep link de push → `/plant/[id]` · `/tickets/[id]` · `/invoices/[id]` (mapa de rotas fechado; `data={tipo,usinaId?,alertaId?,chamadoId?,faturaId?}`). Push exige dev build.
+- [x] Central de alertas consumindo o endpoint — **implementada, validada em produção e mergeada (v1.7.1)**: feed real (`origem` tabela|derivado), badge por `naoLidos`, marcar manual; a derivação local `toPlantAlerts` foi **aposentada**. Ver `EXECUCAO_FASE_C.md`.
+- [x] **Expectativa / "% da previsão" (issue #36 + PR #40)** — recurso estava **morto** (API não expunha `expectativaMensalKwh`); backend passou a derivar de `usina_leitura` e o app usa `expectativaMesAteHojeKwh` como denominador. Mergeado e validado (105–109% na conta de teste).
+- [ ] Reintroduzir "Relatório mensal" e "Atendimento" nas preferências, com efeito real sincronizado — **parte do prompt de push+prefs**.
+- [x] `settings/sessions.tsx`: listagem e revogação reais — **validado contra produção em 20/08** (PR #37; revogação por família, "desconectar outros", `isCurrent`).
+- [ ] Dados mínimos no texto da notificação (nada sensível na tela bloqueada) — **parte do push**.
 
-**Critério de saída:** push de usina offline chega, abre a tela certa, preferências e sessões são reais de ponta a ponta.
+**Critério de saída:** ⚠️ parcial — sessões, alertas e expectativa reais de ponta a ponta. **Falta:** push de usina offline chegar/abrir a tela certa + preferências reais (depende do contrato de push+prefs e do dev build/I6).
 
-### Fase D — Conformidade e TestFlight · ~2–3 semanas · depende de I4, I5, I6 · pode iniciar em paralelo à C
+### Fase D — Conformidade e TestFlight · **🟡 INICIADA em paralelo à C (20/08/2026)** · depende de I4, I5, I6 · ver `EXECUCAO_FASE_D.md`
 
 Espelha a Fase 5 do plano macro (piloto no TestFlight), com os bloqueios de loja resolvidos antes do envio.
 
-- [ ] Privacidade e termos reais (tela interna + URL pública) e **fluxo de exclusão de conta** — a Apple exige início da exclusão dentro do app (I4).
-- [ ] "Termos de Uso e Política de Privacidade" do login (`login.tsx:151`) viram links reais.
-- [ ] Payback: dados reais do contrato (I5) — *(Revisão 1)* o card já está atrás de flag desde a A1; aqui só religa com dados reais.
+- [~] **Fluxo de exclusão de conta (I9)** — 🟡 **construído e staged** (`settings/delete-account.tsx`, branch `feat/exclusao-conta`; aviso + reentrada de senha + textos do servidor + logout). Aguarda deploy do PR #42 p/ validar e mergear. Textos jurídicos da tela dependem do **I4**.
+- [ ] Privacidade e termos reais (tela interna + URL pública) e links do login (`login.tsx`) — dependem do **I4**.
+- [ ] Payback: dados reais do contrato (I5) — o card já está atrás de flag desde a A1; aqui só religa com dados reais.
 - [ ] ~~Crash reporting sanitizado~~ *(Revisão 1: antecipado para a Fase A1 — depende de I10)*.
 - [ ] `eas.json > submit` com credenciais do App Store Connect (I6); build `production` com `autoIncrement` já existe.
 - [ ] Ícone final, screenshots reais, metadados, declaração de dados coletados (App Privacy), justificativas de permissões.
 - [ ] Fonte Gilmer, se os arquivos chegarem (I8) — não bloqueia o piloto.
-- [ ] Passe de acessibilidade nos fluxos principais (VoiceOver, Dynamic Type, contraste) — critério do plano macro.
-- [ ] TestFlight interno → grupo piloto controlado; monitorar crash-free, sucesso de login e latência; go/no-go documentado.
+- [~] Passe de acessibilidade (VoiceOver, roles, headers, estados) — 🟡 **construído e staged** (branch `feat/acessibilidade`; auditoria não achou botão só-ícone sem rótulo). Aguarda teste de VoiceOver no aparelho p/ mergear.
+- [ ] TestFlight interno → grupo piloto controlado; monitorar crash-free, sucesso de login e latência; go/no-go documentado (I6).
 
 **Critério de saída:** cliente piloto instala pelo TestFlight, usa sem ajuda do desenvolvedor e nenhum item de App Review está pendente.
 
@@ -155,9 +163,9 @@ Em ordem de valor sugerida:
 
 | Risco | Prob. | Impacto | Mitigação |
 |---|---|---|---|
-| Contrato de chamados (I1) atrasar e o app seguir "simulando" abertura | Média | Alto — cliente confia num canal que não existe | Se I1 não chegar em 2 semanas, **desabilitar a criação de tickets** e apontar para WhatsApp (1 dia de trabalho) |
+| ~~Contrato de chamados (I1) atrasar~~ | ~~Média~~ **Eliminado** | — | ✅ I1 recebido; Fase B implementada e validada (20/08) |
 | Suposições da migração divergirem do backend (I3) | Média | Médio — troca de senha pode derrubar sessão indevidamente | Validar na Fase A antes de qualquer release; ajuste é localizado em `mobile-api.ts` |
-| App Review reprovar por privacidade/exclusão de conta | Alta se I4 atrasar | Alto — bloqueia o piloto externo | Pedir os textos jurídicos **agora**; TestFlight interno não exige review completo e pode andar antes |
+| App Review reprovar por privacidade/exclusão de conta | ~~Alta~~ **Reduzida** | Alto — bloqueia o piloto externo | Mecânica de exclusão já existe (I9 recebido, fluxo construído); risco restante é só o **texto jurídico (I4)** e a conta Apple (I6). TestFlight interno não exige review completo e pode andar antes |
 | Push validado só no Expo Go | Média | Médio — retrabalho | Dev build desde o início da Fase C |
 | Rate limit de login (10/15min por IP) atingido em demonstrações/treinamentos com vários aparelhos no mesmo Wi-Fi | Baixa | Médio | Só falhas contam; documentar no roteiro de treinamento; monitorar 429 no crash reporting |
 | Repositório sem testes regride durante as Fases B–D | Alta sem Fase A | Médio | CI obrigatório é a primeira entrega do plano |
@@ -176,6 +184,6 @@ Semanas 4–6     Fase D: conformidade + TestFlight (paralela à C; I4/I6 pedido
 Pós-piloto      Fase E: faturas, biometria, Android, app do Técnico
 ```
 
-**Ações imediatas (esta semana):** pedir **I1, I2, I4 e I9** (I9 na mesma conversa do I1 com o backend); executar a A1 inteira; decidir I10 (ferramenta de crash reporting).
+**Ações imediatas (20/08):** o caminho crítico agora é **input do usuário**, não código — (1) **liberar o PR #42** (fecha o I9); (2) **testar o VoiceOver** no Expo Go (fecha a acessibilidade); (3) **conta Apple Developer (I6)** — maior alavancagem, destrava o TestFlight (D) *e* o teste de push (C); (4) **textos jurídicos (I4)** + revisão da constante `RETENCAO`; (5) devolver o contrato de **push+preferências** ao backend. Restam ainda I5 (payback), I8 (fonte), I10 (crash reporting).
 
 O caminho crítico continua sendo o mesmo diagnosticado no plano macro: **não são as telas — são contratos de API, identidade e a operação de loja.** O app está com a fundação técnica pronta; o que falta é majoritariamente backend, decisão de produto e processo de publicação.
