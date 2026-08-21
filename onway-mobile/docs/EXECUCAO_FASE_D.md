@@ -68,3 +68,56 @@ no INTEGRACAO_BACKEND.md e construir o fluxo.
 **Estado:** prompt entregue. Aguarda contrato do backend para construir o fluxo no app
 (substituindo o placeholder em `settings/privacy.tsx`) e validar. Depende também do I4
 (texto da política de exclusão) para o conteúdo da tela de confirmação.
+
+## I9 — contrato recebido (PR #42, pendente de deploy · sem migration)
+
+Backend fechou com rigor. Registro do que voltou e das decisões.
+
+**1. "Conta" = login (provado, não suposto):** grafo de FKs mostra que NADA comercial
+referencia `usuarios` — contratos, faturas, chamados, cliente_usinas, orcamentos pendem
+de `clientes`. De `usuarios` pende só acesso/preferência. Apagar o login é
+estruturalmente incapaz de apagar uma nota fiscal; o esquema já garante, sem guarda no código.
+
+**2. Soft-delete com anonimização** (não delete de linha) — porque `user_consents`
+aponta para o id do usuário e a LGPD art. 37 exige que o registro do tratamento
+sobreviva ao titular. Tocado: `usuarios` (nome/email/telefone/gênero/senha/2FA limpos;
+ativo=false, deleted_at, security_version++), `user_sessions`+`trusted_devices`
+revogados, `cliente_usuarios` desativado (não apagado — preserva histórico), e apagados
+`alerta_leituras`/`login_challenges`/`password_reset_tokens`/`mfa_recovery_codes`. E-mail
+vira `excluido-<id>@invalido.local` (libera o endereço original para reuso).
+
+**3. Sem prazo de arrependimento** — imediato e irreversível. Rede de segurança melhor:
+operador reemite acesso pela tela do cliente (rotina). Prazo de 30 dias exigiria manter
+viva a conta que a pessoa pediu para apagar + job de expurgo. Apple aceita as duas formas.
+
+**4. Senha basta** (sem confirmação por e-mail) — raio de dano de exclusão maliciosa é
+"perde o app e o operador reemite"; os dados do cliente sobrevivem.
+
+**5. Prazo LGPD:** o dado pessoal some na transação (imediato) — é o que o app mostra.
+⚠️ **Os prazos de RETENÇÃO codificados precisam de revisão jurídica (I4):** 5 anos fiscal
+(CTN 173/174), contratual por LGPD art. 16 I e III. Isolado numa constante `RETENCAO`
+para o advogado corrigir sem tocar em código.
+
+**6. Estados:** chamar de novo → 401 (anonimizada não autentica, findById filtra
+deleted_at); concorrência → `UPDATE ... WHERE deleted_at IS NULL` decide, 2º recebe 409;
+multi-conta por cliente → excluir uma não afeta a irmã (testado).
+
+**Contrato:** `POST /api/v3/app/me/exclusao` `{ currentPassword }` (ANTES do gate de
+troca de senha — Apple exige caminho sem obstáculo). 200 → `{ modo:'imediato', dataEfetiva,
+sessoesRevogadas, removido[] (texto), retido[] (item/prazo/porque), politicaVersao }` — textos
+PRONTOS do servidor. Erros: 403 SENHA_ATUAL_INVALIDA (mesma semântica do change-password,
+já tratada), 400 sem senha, 401 sessão morta. **Campo: decidido `currentPassword`** (o app
+já usa no change-password; backend remove o alias `senha`). Prova: senha errada→403,
+exclusão→200, login excluído→401, conta irmã→200 vê usina, contrato/fatura/usina/cliente
+intactos, auditoria sem PII. 242/242 testes (14 specs = contrato legal executável, inclui
+asserção de que nenhuma tabela comercial aparece no SQL da exclusão). Sem migration.
+
+**Nota push:** token de push é dado pessoal → entra na limpeza quando a tabela de
+dispositivos existir (aviso deixado no código).
+
+**App (próximo):** método `deleteAccount(currentPassword)` + fluxo em Configurações
+(substitui o placeholder "indisponível" em settings/privacy.tsx): aviso → reentrada de
+senha → POST → tela final com os textos do servidor (removido/retido/dataEfetiva) → logout.
+Pré-aviso com texto honesto meu (o I4 refina a redação jurídica; NÃO bloqueia a mecânica).
+Staged em branch; validação contra prod após release do PR #42. Contrato entra no
+INTEGRACAO_BACKEND.md após deploy + validação.
