@@ -6,7 +6,6 @@ import {
   statusLabel,
   toGenerationHistory,
   toPlant,
-  toPlantAlerts,
   type Plant,
 } from '@/domain/client';
 import type { ApiPlant, PlantHistoryResponse } from '@/services/mobile-api';
@@ -155,35 +154,6 @@ describe('previsão (% e rótulo)', () => {
 
   it('resume "Sem previsão cadastrada" no fallback/pré-deploy', () => {
     expect(forecastSummary(plant({ expectedMonthToDate: 0, forecastSource: 'unknown' }))).toBe('Sem previsão cadastrada');
-  });
-});
-
-describe('toPlantAlerts', () => {
-  it('gera alerta de perigo para usina offline', () => {
-    const alerts = toPlantAlerts([plant({ status: 'offline' })]);
-    expect(alerts).toHaveLength(1);
-    expect(alerts[0].severity).toBe('danger');
-    expect(alerts[0].category).toBe('plantOffline');
-    expect(alerts[0].description).toContain('offline');
-  });
-
-  it('diferencia monitoramento inativo na descrição', () => {
-    const alerts = toPlantAlerts([plant({ status: 'offline', monitoringActive: false })]);
-    expect(alerts[0].description).toContain('monitoramento inativo');
-  });
-
-  it('gera alerta de atenção para flag de alerta do backend', () => {
-    const alerts = toPlantAlerts([plant({ hasAlert: true })]);
-    expect(alerts).toHaveLength(1);
-    expect(alerts[0].severity).toBe('warning');
-  });
-
-  it('acumula os dois alertas para usina offline com flag de alerta', () => {
-    expect(toPlantAlerts([plant({ status: 'offline', hasAlert: true })])).toHaveLength(2);
-  });
-
-  it('não gera alerta para usina saudável', () => {
-    expect(toPlantAlerts([plant()])).toHaveLength(0);
   });
 });
 

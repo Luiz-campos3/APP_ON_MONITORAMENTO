@@ -49,18 +49,6 @@ export type WeeklyGeneration = {
 
 export type HistoryPeriod = 'day' | 'week' | 'month' | 'year';
 
-export type PlantAlert = {
-  id: string;
-  plantId: string;
-  plantName: string;
-  city: string;
-  category: 'plantOffline' | 'lowGeneration';
-  severity: 'warning' | 'danger';
-  title: string;
-  description: string;
-  timestampLabel: string;
-};
-
 function numeric(value: number | null | undefined) {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
@@ -152,42 +140,6 @@ export function toPlant(plant: ApiPlant): Plant {
     source: normalizeText(plant.fonteLeitura) || 'sem dados',
     modules: numeric(plant.qtdPlacas),
   };
-}
-
-export function toPlantAlerts(plants: Plant[]): PlantAlert[] {
-  return plants.flatMap((plant) => {
-    const alerts: PlantAlert[] = [];
-
-    if (!plant.monitoringActive || plant.status === 'offline') {
-      alerts.push({
-        id: `${plant.id}-offline`,
-        plantId: plant.id,
-        plantName: plant.name,
-        city: plant.city,
-        category: 'plantOffline',
-        severity: 'danger',
-        title: 'Usina sem comunicação',
-        description: `A unidade está ${plant.monitoringActive ? 'offline' : 'com monitoramento inativo'} e precisa de verificação.`,
-        timestampLabel: plant.updatedAtLabel,
-      });
-    }
-
-    if (plant.hasAlert || plant.status === 'attention') {
-      alerts.push({
-        id: `${plant.id}-attention`,
-        plantId: plant.id,
-        plantName: plant.name,
-        city: plant.city,
-        category: 'lowGeneration',
-        severity: 'warning',
-        title: 'Atenção no monitoramento',
-        description: 'O backend sinalizou alerta para esta usina. Confira geração, comunicação e última leitura.',
-        timestampLabel: plant.updatedAtLabel,
-      });
-    }
-
-    return alerts;
-  });
 }
 
 export function toWeeklyGeneration(response: PlantHistoryResponse): WeeklyGeneration {

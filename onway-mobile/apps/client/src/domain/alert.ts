@@ -1,8 +1,10 @@
+import type { SFSymbol } from 'expo-symbols';
+
 import type { AlertOrigin, ApiAlert, ApiAlertStatus, AlertsResponse } from '@/services/mobile-api';
 
 export type AlertTone = 'danger' | 'warning';
 
-export type AlertIcon = { ios: string; android: string };
+export type AlertIcon = { ios: SFSymbol; android: string };
 
 export type Alert = {
   id: string;

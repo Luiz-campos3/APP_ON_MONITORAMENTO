@@ -13,7 +13,7 @@ import { brand, radius, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useClientData } from '@/contexts/client-data-context';
 import { useOnWayTheme } from '@/contexts/theme-context';
-import { forecastSummary, statusLabel, toPlantAlerts } from '@/domain/client';
+import { forecastSummary, statusLabel } from '@/domain/client';
 import { computePayback } from '@/domain/payback';
 import { usePlantHistory } from '@/hooks/use-plant-history';
 
@@ -40,7 +40,6 @@ export default function HomeScreen() {
   const todayHistory = usePlantHistory(plant?.id, todayRange);
   const firstName = user?.nome.split(' ').filter(Boolean)[0] || 'cliente';
   const monthlyForecast = plant ? forecastSummary(plant) : null;
-  const alertCount = toPlantAlerts(plants).length;
 
   useEffect(() => {
     if (plants.length && !plants.some((item) => item.id === selectedId)) {
@@ -225,7 +224,7 @@ export default function HomeScreen() {
           <Text style={[styles.activityTitle, { color: colors.text }]}>{dashboard?.quantidadeUsinas ?? plants.length} usinas vinculadas</Text>
           <Text style={[styles.activityText, { color: colors.textSecondary }]}>{(dashboard?.potenciaTotalKwp ?? plants.reduce((sum, item) => sum + item.powerKwp, 0)).toLocaleString('pt-BR')} kWp de potência total.</Text>
           <Text style={[styles.activityTime, { color: colors.textSecondary }]}>
-            {alertCount || dashboard?.usinasComAlerta || 0} com ponto de atenção
+            {dashboard?.usinasComAlerta ?? 0} com ponto de atenção
           </Text>
         </View>
       </Card>

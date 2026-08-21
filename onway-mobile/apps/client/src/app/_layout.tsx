@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 
 import { OnWayThemeProvider, useOnWayTheme } from '@/contexts/theme-context';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
+import { AlertsProvider } from '@/contexts/alerts-context';
 import { ClientAppProvider } from '@/contexts/client-app-context';
 import { ClientDataProvider } from '@/contexts/client-data-context';
 import { SupportProvider } from '@/contexts/support-context';
@@ -88,9 +89,11 @@ export default function RootLayout() {
       <AuthProvider>
         <ClientDataProvider>
           <ClientAppProvider>
-            <SupportProvider>
-              <NavigationRoot />
-            </SupportProvider>
+            <AlertsProvider>
+              <SupportProvider>
+                <NavigationRoot />
+              </SupportProvider>
+            </AlertsProvider>
           </ClientAppProvider>
         </ClientDataProvider>
       </AuthProvider>

@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SymbolIcon } from '@/components/symbol-icon';
 import { brand, radius } from '@/constants/theme';
-import { useClientApp } from '@/contexts/client-app-context';
+import { useAlerts } from '@/contexts/alerts-context';
 import { useOnWayTheme } from '@/contexts/theme-context';
 
 const tabs = {
@@ -18,7 +18,7 @@ const tabs = {
 export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { colors } = useOnWayTheme();
-  const { unreadAlertCount } = useClientApp();
+  const { unread: unreadAlertCount } = useAlerts();
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
