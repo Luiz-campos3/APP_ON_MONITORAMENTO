@@ -589,6 +589,48 @@ function withTicketQuery(path: string, page?: number, limit?: number, usinaId?: 
   return query ? `${path}?${query}` : path;
 }
 
+// --- Alertas (issue #36 follow-up / PR alertas). Feed unificado: linhas da tabela
+// `alertas` + comunicação/estado derivado ao vivo de usinas.status (todos os vendors),
+// junção feita no servidor. `origem` distingue os dois. ---
+export type AlertSeverity = 'critical' | 'warning';
+export type AlertStatusFilter = 'aberto' | 'resolvido' | 'todos';
+export type ApiAlertStatus = 'aberto' | 'resolvido';
+export type AlertOrigin = 'tabela' | 'derivado';
+
+export type ApiAlert = {
+  id: string;
+  usinaId: string;
+  usinaNome: string;
+  cidade: string | null;
+  tipo: string; // enum do servidor; o app tolera valores desconhecidos
+  severidade: AlertSeverity;
+  titulo: string; // texto pronto do servidor — não hardcodar copy no app
+  mensagem: string;
+  status: ApiAlertStatus;
+  abertoEm: string | null; // no derivado é a última geração, não a última leitura
+  resolvidoEm: string | null;
+  lido: boolean;
+  origem: AlertOrigin;
+};
+
+export type AlertsResponse = {
+  alertas: ApiAlert[];
+  total: number;
+  naoLidos: number;
+  paginacao: { page: number; limit: number; total: number };
+};
+
+export type MarkAlertsReadResult = { naoLidos: number };
+
+function withAlertQuery(path: string, status?: AlertStatusFilter, page?: number, limit?: number) {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (typeof page === 'number') params.set('page', String(page));
+  if (typeof limit === 'number') params.set('limit', String(limit));
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
+}
+
 export const mobileApi = {
   setSessionExpiredHandler(handler: (() => void) | null) {
     sessionExpiredHandler = handler;
@@ -740,6 +782,17 @@ export const mobileApi = {
     authenticatedDelete<RevokeSessionResult>(`/api/v3/app/me/sessions/${encodeURIComponent(familyId)}`),
   // Desconecta os outros dispositivos; a sessão atual sobrevive.
   revokeOtherSessions: () => authenticatedDelete<RevokeOthersResult>('/api/v3/app/me/sessions'),
+
+  // Central de alertas. Feed já ordenado pelo servidor (não lido → crítico → recente).
+  // Alerta derivado não tem "resolvido" (some do feed ao recuperar); os filtros
+  // resolvido/todos valem só para linhas de tabela.
+  getAlerts: (status?: AlertStatusFilter, page?: number, limit?: number) =>
+    authenticatedGet<AlertsResponse>(withAlertQuery('/api/v3/app/alertas', status, page, limit)),
+  getAlert: (id: string) =>
+    authenticatedGet<ApiAlert>(`/api/v3/app/alertas/${encodeURIComponent(id)}`),
+  // Sem ids = marca todos os abertos como lidos. Idempotente; id alheio é ignorado.
+  markAlertsRead: (ids?: string[]) =>
+    authenticatedSend<MarkAlertsReadResult>('/api/v3/app/alertas/marcar-lidos', ids && ids.length ? { ids } : {}),
 };
 
 export function apiErrorMessage(error: unknown) {
