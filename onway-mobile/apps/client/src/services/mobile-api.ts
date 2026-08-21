@@ -631,6 +631,18 @@ function withAlertQuery(path: string, status?: AlertStatusFilter, page?: number,
   return query ? `${path}?${query}` : path;
 }
 
+// Exclusão de conta (I9, PR #42). Anonimiza o login (soft-delete); a relação
+// comercial (contrato/faturas/usina) sobrevive. Textos prontos do servidor.
+export type RetentionItem = { item: string; prazo: string; porque: string };
+export type AccountDeletionResult = {
+  modo: string; // 'imediato'
+  dataEfetiva: string; // ISO
+  sessoesRevogadas: number;
+  removido: string[];
+  retido: RetentionItem[];
+  politicaVersao: string;
+};
+
 export const mobileApi = {
   setSessionExpiredHandler(handler: (() => void) | null) {
     sessionExpiredHandler = handler;
@@ -793,6 +805,11 @@ export const mobileApi = {
   // Sem ids = marca todos os abertos como lidos. Idempotente; id alheio é ignorado.
   markAlertsRead: (ids?: string[]) =>
     authenticatedSend<MarkAlertsReadResult>('/api/v3/app/alertas/marcar-lidos', ids && ids.length ? { ids } : {}),
+
+  // Exclusão de conta. Fica ANTES do gate de troca de senha (Apple exige caminho
+  // sem obstáculo). Senha atual errada → 403 SENHA_ATUAL_INVALIDA (ApiError.code).
+  deleteAccount: (currentPassword: string) =>
+    authenticatedSend<AccountDeletionResult>('/api/v3/app/me/exclusao', { currentPassword }),
 };
 
 export function apiErrorMessage(error: unknown) {
