@@ -714,3 +714,34 @@ por design). Pente-fino visual pendente no device.
 
 **Fase C:** sessões + expectativa + alertas ENTREGUES e no ar. Falta só
 **push + preferências** — depende de o usuário passar as rotas do deep link `onwayclient://`.
+
+## Push + Preferências — prompt de backend (20/08)
+
+Último passo da Fase C. Duas partes com dependências diferentes: **preferências**
+valida no Expo Go (só API); **push** precisa do dev build + APNs (etapa 2) para testar
+no device — a parte de backend pode ir em paralelo.
+
+**Preferências:** substituir o AsyncStorage local (4 chaves em client-app-context:
+comunicação, baixa geração, relatório mensal, atendimento) + a coluna morta
+usuarios.notif por fonte real por usuário. GET/PATCH /me/preferencias, default tudo true,
+governa o envio de push.
+
+**Push:** app é Expo → ExpoPushToken, backend envia via https://exp.host/--/api/v2/push/send.
+Registro de token (POST/DELETE /me/push-tokens, multi-device, poda por receipt
+DeviceNotRegistered), envio respeitando preferências, payload = deep link.
+
+**Ponto que precisa de decisão do backend (anti-spam):** o que dispara push. Chamado
+(mudança de status) é claro. Alerta DERIVADO (sem_comunicacao) é contínuo/oscila →
+proposta: push só em baixa_geracao (tabela) recém-aberto + no máximo a transição para
+sem_comunicacao critical (uma vez, com debounce). Relatório mensal = 1/mês.
+
+**Deep link (mapa de rotas do app, fechado):** data={tipo, usinaId?, alertaId?,
+chamadoId?, faturaId?} → 'alerta'→/plant/[usinaId], 'chamado'→/tickets/[chamadoId],
+'fatura'→/invoices/[faturaId]. Scheme onwayclient://.
+
+**Dependência dura:** teste end-to-end de push exige dev build com APNs = Apple Developer
+Program PAGO (gargalo do usuário, ver EAS_DEV_BUILD.md). Preferências não dependem disso.
+
+**Estado:** prompt entregue ao usuário. Aguarda contratos (preferências + push-tokens +
+enum de categorias + o que dispara push) para registrar em INTEGRACAO_BACKEND.md e validar.
+Fecha a Fase C.
