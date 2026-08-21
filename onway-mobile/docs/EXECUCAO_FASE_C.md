@@ -615,3 +615,61 @@ NÃO foi incluído agora de propósito — é módulo nativo (exigiria rebuild) 
 build sai mais simples sem APNs, já destravando o teste no device de alertas e
 preferências. Entra na etapa 2, quando o contrato de push chegar. Expo Go segue
 funcionando.
+
+## Central de alertas — contrato do backend (recebido 20/08, pendente de deploy)
+
+Backend fechou o crux A FAVOR da união no servidor, com número: `status='error'`
+cobre **190 usinas** (Canadian Solar 64, Enphase 64, GoodWe 37, Fronius 20,
+SolarEdge 2, Sunweg 3) = "sem comunicação"; a tabela cobriria só Enphase, e os
+tipos legados dela estão todos resolvidos desde a limpeza do v1.6.1. Materializar
+"sem comunicação" despejaria ~190 alertas de uma vez (incluindo usinas paradas
+desde 2021/2022 e as 54 da issue #39). **Derivar mantém o app honesto sem tomar
+essa decisão; o shape é o mesmo, então materializar depois não muda o contrato.**
+
+**Contrato (PR com migration 0061; NÃO em produção ainda):**
+- `GET /api/v3/app/alertas?status=aberto|resolvido|todos&page=1&limit=20` (default aberto)
+  → `{ alertas:[…], total, naoLidos, paginacao:{page,limit,total} }`. Por alerta:
+  id, usinaId, usinaNome, cidade, tipo(enum), severidade('critical'|'warning'),
+  titulo (pronto do servidor), mensagem, status('aberto'|'resolvido'),
+  abertoEm/resolvidoEm(ISO|null), lido(por usuário), **origem('tabela'|'derivado')**.
+  Ordenação já vem pronta: não lido → crítico → mais recente.
+- `GET /api/v3/app/alertas/:id` — mesmos campos; alheio/inexistente → 404.
+- `POST /api/v3/app/alertas/marcar-lidos` — body `{ids?}` (sem ids = todos os
+  abertos) → `{naoLidos}`. Idempotente, teto 500 ids, id alheio ignorado.
+
+**Taxonomia (tipo → titulo → tom → origem):**
+- sem_comunicacao → "Sem comunicação" → critical → derivado (status='error')
+- baixa_geracao → "Geração abaixo do esperado" → warning|critical → tabela
+- atencao_operacional → "Atenção operacional" → warning → derivado (status='warning';
+  cobre "Inversor em espera", "Usina não comissionada", etc.; mensagem = texto do vendor)
+- sem_conexao_envoy, micro_baixa_producao, micro_falha_producao, problema_medidor →
+  rótulos próprios → warning|critical → tabela, **só histórico**
+- sla_vencido FORA (operacional; linhas nem têm usina_id) — travado em spec.
+
+**Três detalhes de tela (do backend):**
+1. `abertoEm` do derivado = última GERAÇÃO, não última leitura (coletor grava leitura
+   mesmo offline, 5/dia com zero).
+2. Alerta derivado **não tem estado resolvido**: some do feed ao recuperar. Filtros
+   resolvido/todos valem só p/ linhas de tabela. Histórico de comunicação exigiria
+   materializar.
+3. Uma usina pode aparecer **2×** (baixa_geracao tabela + sem_comunicacao derivado) —
+   ambos verdadeiros.
+
+**Deep link:** `{tipo:'alerta', usinaId, alertaId}` confirmado. alertaId derivado é
+estável enquanto a condição existir; se a usina recuperar antes do toque, GET
+/alertas/:id dá 404 → app trata como "já resolvido" e cai para /plant/[id].
+
+**Validação (no release, comigo presente):** as 4 usinas Sungrow da conta de teste
+estão saudáveis (feed vazio hoje). Backend semeia 1 aberto + 1 resolvido (baixa_geracao,
+SQL pronto) para validar os dois estados; derivado só marcando status='error' temporário
+(some em ≤30min quando o coletor sobrescreve). Reverte tudo depois.
+
+**Release:** migration 0061 NÃO roda sozinha (agente só troca imagem). Ordem: imagem
+converge → docker exec no backend do Swarm com `npm run migrate:up`. Aditiva (nenhuma
+ordem quebra), mas as rotas novas só funcionam depois dela.
+
+**App:** camada de dados+domínio implementada e testada no branch `feat/central-alertas`
+(commit cc98dd0, 127 testes): mobile-api (getAlerts/getAlert/markAlertsRead) +
+domain/alert.ts (toAlert/toAlertFeed, tipo→ícone, tempo relativo, preserva ordem).
+Tela/badge/contexto = próximo passo (após confirmar UX + deploy). Contrato entra no
+INTEGRACAO_BACKEND.md só após rotas em produção + validação contra a conta de teste.
