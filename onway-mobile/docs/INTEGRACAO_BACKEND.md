@@ -316,6 +316,43 @@ DELETE /api/v3/app/me/sessions             desconecta as OUTRAS (a atual sobrevi
   request): o aparelho revogado recebe `401 "Sessão invalidada"` — tratar como
   qualquer 401 (refresh 1×, falha, limpa tokens, login).
 
+### Central de alertas (contrato v1.7.1 validado contra produção, 20/08/2026)
+
+**Feed unificado**, montado no servidor: linhas da tabela `alertas` (`origem:'tabela'`)
++ comunicação/estado derivado ao vivo de `usinas.status` para **todos os vendors**
+(`origem:'derivado'`). Decisão do crux: derivar em vez de materializar "sem comunicação"
+mantém o app honesto sem despejar ~190 alertas de usinas paradas há anos. O feed já
+vem **ordenado** (não lido → crítico → mais recente).
+
+```
+GET  /api/v3/app/alertas?status=aberto|resolvido|todos&page=1&limit=20   (default aberto)
+GET  /api/v3/app/alertas/:id                    detalhe (alheio/inexistente → 404)
+POST /api/v3/app/alertas/marcar-lidos           body {ids?} (sem ids = todos os abertos)
+```
+
+- **GET lista** → `data: { alertas: [ {…} ], total, naoLidos, paginacao:{page,limit,total} }`.
+  Objeto por alerta (13 campos, validados 1:1 contra produção):
+  `id, usinaId, usinaNome, cidade, tipo, severidade('critical'|'warning'), titulo,
+  mensagem, status('aberto'|'resolvido'), abertoEm, resolvidoEm, lido, origem('tabela'|'derivado')`.
+  `titulo`/`mensagem` já vêm **prontos do servidor** (não hardcodar copy no app).
+- **Taxonomia de `tipo`:** `sem_comunicacao` (critical, derivado de `status='error'`),
+  `baixa_geracao` (tabela), `atencao_operacional` (warning, derivado de `status='warning'`;
+  ex.: "Inversor em espera", "Usina não comissionada"), e os de tabela só-histórico
+  `sem_conexao_envoy`/`micro_baixa_producao`/`micro_falha_producao`/`problema_medidor`.
+  `sla_vencido` **não** entra (operacional; sem `usina_id`). O app tolera `tipo`
+  desconhecido (ícone de sino como fallback).
+- **Alerta `derivado` não tem estado resolvido**: some do feed ao recuperar. Filtros
+  `resolvido`/`todos` valem **só para linhas de tabela**. `abertoEm` do derivado é a
+  última **geração** (não a última leitura). Uma usina pode aparecer **2×** com
+  diagnósticos diferentes (ex.: `baixa_geracao` tabela + `sem_comunicacao` derivado).
+- **GET :id** → mesmo objeto. `alertaId` derivado é estável enquanto a condição
+  existir; se a usina recuperar antes do toque → **404** → o app trata como "já
+  resolvido" e cai para `/plant/[id]`.
+- **POST marcar-lidos** → `data: { naoLidos }`. `lido` é **por usuário**. Idempotente,
+  teto de 500 ids, id alheio silenciosamente ignorado. Sem `ids` = marca todos os
+  abertos do usuário.
+- **Deep link (push):** `data = {tipo:'alerta', usinaId, alertaId}`.
+
 ### Códigos de erro
 | Código | Quando |
 |---|---|

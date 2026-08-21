@@ -673,3 +673,44 @@ ordem quebra), mas as rotas novas só funcionam depois dela.
 domain/alert.ts (toAlert/toAlertFeed, tipo→ícone, tempo relativo, preserva ordem).
 Tela/badge/contexto = próximo passo (após confirmar UX + deploy). Contrato entra no
 INTEGRACAO_BACKEND.md só após rotas em produção + validação contra a conta de teste.
+
+## Central de alertas — VALIDADA em produção e MERGEADA (v1.7.1, 20/08)
+
+Backend subiu v1.7.1 (migration 0061 aplicada, conta de teste semeada, 3 rotas
+validadas, zero 5xx). **Probe read-only meu confirmou o contrato ao vivo:** 13/13
+campos do `ApiAlert` batem exatamente (zero faltando, zero extra não mapeado);
+`?status` aberto/resolvido/todos = 2/1/3; detalhe 200; inexistente 404. Detalhe real
+conferido: `baixa_geracao/critical/tabela`, titulo/mensagem prontos, origem correta.
+**Branch `feat/central-alertas` mergeado na main; contrato registrado em
+INTEGRACAO_BACKEND.md.** Não chamei `marcar-lidos` no probe (read-only) para preservar
+os não-lidos do teste no aparelho.
+
+**Tropeço do release (registrado a pedido do backend):** a migration 0061 "não rodou"
+na 1ª tentativa — durante o rolling update as duas tasks coexistem e o `grep
+'^monitoramento_backend\.'` do runbook casou a task ANTIGA (v1.7.0, sem o arquivo da
+0061). Correto é filtrar pela imagem:
+`docker ps --filter "ancestor=ghcr.io/luiz-campos3/monitoramento-backend:<tag>" --format '{{.Names}}'`.
+É armadilha do procedimento, não acaso — vale corrigir o runbook do backend (concordei;
+o backend faz o commit de doc do lado dele). Nosso registro aqui já usa o filtro por imagem.
+
+**Seed (decisão do backend):** pedi 1 aberto + 1 resolvido; ele semeou **3** porque o
+job de detecção roda de hora em hora e resolve `baixa_geracao` de usina saudável (as 4
+da conta estão ok) — um `baixa_geracao` aberto se apaga sozinho em <1h. Durável para
+testes sem pressa = `problema_medidor` (IE UFV-3, tipo legado que nenhum job encosta);
+efêmero = `baixa_geracao` (IE UFV-1); resolvido durável = `baixa_geracao` (IE UFV-2).
+Todos com `payload->>'origem'='semeado_para_validacao_app'` — backend remove num comando
+quando terminarmos a validação (anotado no producao.env).
+
+**Credenciais:** senha da conta de teste rotacionada para `grampo-telha-bucha-32`
+(atualizada no .env local, gitignorado; a anterior foi invalidada e derrubou as sessões
+daquela conta). `mustChangePassword` foi **desligado** para o teste — se quisermos voltar
+a exercitar o fluxo de troca forçada, pedir ao backend para rearmar.
+
+**Para o teste visual no aparelho:** os 3 semeados estão `lido=true`/`naoLidos=0` (a
+validação de `marcar-lidos {}` do backend marcou tudo lido). Os cards aparecem, mas o
+**badge e o ponto de não-lido não vão mostrar** até os alertas voltarem a não-lidos —
+pedir ao backend para setar `lido=false` nos semeados (ou o app não tem como "des-ler",
+por design). Pente-fino visual pendente no device.
+
+**Fase C:** sessões + expectativa + alertas ENTREGUES e no ar. Falta só
+**push + preferências** — depende de o usuário passar as rotas do deep link `onwayclient://`.
