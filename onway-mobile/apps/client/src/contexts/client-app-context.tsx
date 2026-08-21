@@ -1,9 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 
-import { useClientData } from '@/contexts/client-data-context';
-import { toPlantAlerts } from '@/domain/client';
-
 export type NotificationPreferences = {
   plantOffline: boolean;
   lowGeneration: boolean;
@@ -14,7 +11,6 @@ export type NotificationPreferences = {
 type ClientAppContextValue = {
   notifications: NotificationPreferences;
   setNotification: (key: keyof NotificationPreferences, enabled: boolean) => void;
-  unreadAlertCount: number;
 };
 
 const NOTIFICATIONS_KEY = '@onway/notification-preferences';
@@ -29,9 +25,7 @@ const initialNotifications: NotificationPreferences = {
 const ClientAppContext = createContext<ClientAppContextValue | null>(null);
 
 export function ClientAppProvider({ children }: PropsWithChildren) {
-  const { plants } = useClientData();
   const [notifications, setNotifications] = useState(initialNotifications);
-  const alerts = useMemo(() => toPlantAlerts(plants), [plants]);
 
   useEffect(() => {
     AsyncStorage.getItem(NOTIFICATIONS_KEY)
@@ -52,8 +46,7 @@ export function ClientAppProvider({ children }: PropsWithChildren) {
   const value = useMemo<ClientAppContextValue>(() => ({
     notifications,
     setNotification,
-    unreadAlertCount: alerts.filter((alert) => notifications[alert.category]).length,
-  }), [alerts, notifications]);
+  }), [notifications]);
 
   return <ClientAppContext.Provider value={value}>{children}</ClientAppContext.Provider>;
 }
