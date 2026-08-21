@@ -82,7 +82,7 @@ export default function ChangePasswordScreen() {
   }
 
   const toggle = (
-    <Pressable accessibilityLabel={show ? 'Ocultar senhas' : 'Mostrar senhas'} hitSlop={12} onPress={() => setShow((value) => !value)}>
+    <Pressable accessibilityRole="button" accessibilityLabel={show ? 'Ocultar senhas' : 'Mostrar senhas'} hitSlop={12} onPress={() => setShow((value) => !value)}>
       <SymbolIcon ios={show ? 'eye.slash' : 'eye'} android={show ? 'visibility_off' : 'visibility'} color={colors.textSecondary} size={21} fallback={show ? '◉' : '○'} />
     </Pressable>
   );
@@ -90,7 +90,7 @@ export default function ChangePasswordScreen() {
   return (
     <Screen>
       <SettingsHeader title="Redefinir senha" />
-      <Text style={[styles.title, { color: colors.text }]}>Criar uma nova senha</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>Criar uma nova senha</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Escolha uma senha forte com pelo menos {MIN_LENGTH} caracteres.</Text>
 
       {forced ? (
@@ -143,7 +143,7 @@ export default function ChangePasswordScreen() {
       </Card>
 
       {forced ? (
-        <Pressable onPress={handleLogout} style={styles.logoutButton}>
+        <Pressable accessibilityRole="button" onPress={handleLogout} style={styles.logoutButton}>
           <Text style={[styles.logoutText, { color: colors.textSecondary }]}>Sair da conta</Text>
         </Pressable>
       ) : null}

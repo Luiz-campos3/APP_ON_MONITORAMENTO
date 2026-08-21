@@ -98,7 +98,7 @@ export default function InvoiceDetailScreen() {
 function Row({ label, value, ios, android, last = false }: { label: string; value: string; ios: Parameters<typeof SymbolIcon>[0]['ios']; android: string; last?: boolean }) {
   const { colors } = useOnWayTheme();
   return (
-    <View style={[styles.row, !last && { borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
+    <View accessible style={[styles.row, !last && { borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
       <View style={[styles.rowIcon, { backgroundColor: colors.surfaceMuted }]}><SymbolIcon ios={ios} android={android} color={colors.textSecondary} size={17} fallback="•" /></View>
       <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>{label}</Text>
       <Text style={[styles.rowValue, { color: colors.text }]}>{value}</Text>

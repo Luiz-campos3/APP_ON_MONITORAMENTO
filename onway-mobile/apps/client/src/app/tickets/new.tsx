@@ -134,6 +134,9 @@ export default function NewTicketScreen() {
           return (
             <Pressable
               key={plant.id}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: active }}
+              accessible
               onPress={() => setPlantId(plant.id)}
               style={[styles.plantRow, index < plants.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
               <View style={styles.plantInfo}>
@@ -190,17 +193,17 @@ export default function NewTicketScreen() {
             <Text style={[styles.photoName, { color: colors.text }]}>Foto anexada</Text>
             <Text style={[styles.photoHint, { color: colors.textSecondary }]}>Comprimida e sem dados de localização.</Text>
           </View>
-          <Pressable accessibilityLabel="Remover foto" onPress={() => setPhoto(null)} hitSlop={10}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Remover foto" onPress={() => setPhoto(null)} hitSlop={10}>
             <SymbolIcon ios="trash" android="delete" color={brand.danger} size={19} fallback="🗑" />
           </Pressable>
         </View>
       ) : (
         <View style={styles.photoButtons}>
-          <Pressable disabled={attaching} onPress={() => attach('camera')} style={({ pressed }) => [styles.photoButton, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && { opacity: 0.8 }]}>
+          <Pressable accessibilityRole="button" accessible disabled={attaching} onPress={() => attach('camera')} style={({ pressed }) => [styles.photoButton, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && { opacity: 0.8 }]}>
             <SymbolIcon ios="camera.fill" android="photo_camera" color={colors.accent} size={20} fallback="📷" />
             <Text style={[styles.photoButtonText, { color: colors.text }]}>Câmera</Text>
           </Pressable>
-          <Pressable disabled={attaching} onPress={() => attach('gallery')} style={({ pressed }) => [styles.photoButton, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && { opacity: 0.8 }]}>
+          <Pressable accessibilityRole="button" accessible disabled={attaching} onPress={() => attach('gallery')} style={({ pressed }) => [styles.photoButton, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && { opacity: 0.8 }]}>
             <SymbolIcon ios="photo.on.rectangle" android="photo_library" color={colors.accent} size={20} fallback="🖼" />
             <Text style={[styles.photoButtonText, { color: colors.text }]}>Galeria</Text>
           </Pressable>

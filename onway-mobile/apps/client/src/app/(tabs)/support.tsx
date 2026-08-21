@@ -61,7 +61,7 @@ export default function SupportScreen() {
   return (
     <Screen>
       <AppHeader />
-      <Text style={[styles.title, { color: colors.text }]}>Como podemos ajudar?</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>Como podemos ajudar?</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Fale com a OnWay ou encontre uma resposta rápida.</Text>
       <View style={styles.channels}>
         <Card style={styles.channelCard}>
@@ -70,7 +70,7 @@ export default function SupportScreen() {
           </View>
           <Text style={[styles.channelTitle, { color: colors.text }]}>WhatsApp</Text>
           <Text style={[styles.channelText, { color: colors.textSecondary }]}>Atendimento rápido em horário comercial.</Text>
-          <Pressable onPress={() => openContact('whatsapp')} style={({ pressed }) => [styles.channelButton, { backgroundColor: brand.green }, pressed && styles.pressed]}>
+          <Pressable accessibilityRole="button" onPress={() => openContact('whatsapp')} style={({ pressed }) => [styles.channelButton, { backgroundColor: brand.green }, pressed && styles.pressed]}>
             <Text style={styles.channelButtonText}>Iniciar conversa</Text>
           </Pressable>
         </Card>
@@ -80,14 +80,14 @@ export default function SupportScreen() {
           </View>
           <Text style={[styles.channelTitle, { color: colors.text }]}>Telefone</Text>
           <Text style={[styles.channelText, { color: colors.textSecondary }]}>{supportContact.phoneDisplay}{'\n'}Segunda a sexta, das 8h às 18h.</Text>
-          <Pressable onPress={() => openContact('phone')} style={({ pressed }) => [styles.channelButton, { backgroundColor: colors.surfaceMuted }, pressed && styles.pressed]}>
+          <Pressable accessibilityRole="button" onPress={() => openContact('phone')} style={({ pressed }) => [styles.channelButton, { backgroundColor: colors.surfaceMuted }, pressed && styles.pressed]}>
             <Text style={[styles.channelButtonText, { color: colors.text }]}>Ligar agora</Text>
           </Pressable>
         </Card>
       </View>
       <View style={styles.serviceHeader}>
         <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 0, marginBottom: 0 }]}>Abrir chamado</Text>
-        <Pressable onPress={() => router.push('/tickets')} style={({ pressed }) => [styles.myTicketsLink, pressed && styles.pressed]}>
+        <Pressable accessibilityRole="button" accessible onPress={() => router.push('/tickets')} style={({ pressed }) => [styles.myTicketsLink, pressed && styles.pressed]}>
           <Text style={[styles.myTicketsText, { color: colors.accent }]}>Meus chamados</Text>
           {openCount > 0 ? (
             <View style={[styles.countBadge, { backgroundColor: colors.accent }]}><Text style={styles.countBadgeText}>{openCount}</Text></View>

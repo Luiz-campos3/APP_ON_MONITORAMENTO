@@ -174,7 +174,7 @@ export function DatePickerSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel} statusBarTranslucent>
-      <Pressable style={[styles.backdrop, { backgroundColor: colors.scrim }]} accessibilityLabel="Fechar calendário" onPress={onCancel} />
+      <Pressable accessibilityRole="button" style={[styles.backdrop, { backgroundColor: colors.scrim }]} accessibilityLabel="Fechar calendário" onPress={onCancel} />
       <View style={styles.sheetWrapper} pointerEvents="box-none">
         <View accessibilityViewIsModal style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.grabber} />

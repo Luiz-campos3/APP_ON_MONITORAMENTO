@@ -96,7 +96,7 @@ export default function CheckupScreen() {
   return (
     <Screen>
       <SettingsHeader title="Verificação do sistema" />
-      <Text style={[styles.title, { color: colors.text }]}>Diagnóstico da usina</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>Diagnóstico da usina</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
         Verificamos a comunicação da usina e a geração em relação ao prognóstico, e geramos um resultado.
       </Text>
@@ -108,6 +108,9 @@ export default function CheckupScreen() {
             return (
               <Pressable
                 key={plant.id}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: active }}
+                accessible
                 onPress={() => setPlantId(plant.id)}
                 style={[styles.plantRow, index < plants.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
                 <View style={styles.plantInfo}>

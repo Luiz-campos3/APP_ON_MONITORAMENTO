@@ -43,7 +43,7 @@ export default function PlantsScreen() {
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor={colors.accent} />}>
       <AppHeader />
-      <Text style={[styles.title, { color: colors.text }]}>Minhas usinas</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>Minhas usinas</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Acompanhe suas unidades em um só lugar.</Text>
       <View style={styles.summaryRow}>
         <Card style={styles.summaryCard}>
@@ -63,7 +63,7 @@ export default function PlantsScreen() {
         {plants.map((plant) => {
           const status = statusConfig[plant.status];
           return (
-            <Pressable key={plant.id} onPress={() => router.push(`/plant/${plant.id}`)}>
+            <Pressable key={plant.id} accessibilityRole="button" accessible onPress={() => router.push(`/plant/${plant.id}`)}>
               {({ pressed }) => (
                 <Card style={[styles.plantCard, pressed && styles.pressed]}>
                   <View style={[styles.icon, { backgroundColor: colors.accentSoft }]}>

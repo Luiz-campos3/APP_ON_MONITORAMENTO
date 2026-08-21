@@ -21,7 +21,7 @@ export default function NotificationsScreen() {
   return (
     <Screen>
       <SettingsHeader title="Notificações" />
-      <Text style={[styles.title, { color: colors.text }]}>Suas preferências</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>Suas preferências</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Escolha quais comunicações deseja receber.</Text>
       <Card style={styles.card}>
         {options.map((option, index) => (

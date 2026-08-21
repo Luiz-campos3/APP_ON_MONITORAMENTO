@@ -12,7 +12,7 @@ export default function PrivacyScreen() {
   return (
     <Screen>
       <SettingsHeader title="Privacidade e termos" />
-      <Text style={[styles.title, { color: colors.text }]}>Seus dados, com clareza</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>Seus dados, com clareza</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Resumo das regras aplicáveis ao aplicativo.</Text>
       <Card style={styles.card}>
         <Section title="Política de privacidade" text="A OnWay utilizará os dados necessários para autenticação, exibição das usinas vinculadas, suporte e segurança da conta. O aplicativo não deve expor informações de outros clientes." />

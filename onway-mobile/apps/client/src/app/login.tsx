@@ -134,7 +134,7 @@ export default function LoginScreen() {
                 }
               />
 
-              <Pressable onPress={() => router.push('/forgot-password')} style={styles.forgotButton}>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/forgot-password')} style={styles.forgotButton}>
                 <Text style={[styles.forgotText, { color: colors.accent }]}>Esqueci minha senha</Text>
               </Pressable>
 
