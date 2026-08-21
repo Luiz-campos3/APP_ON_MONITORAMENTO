@@ -7,6 +7,7 @@
 | [EXECUCAO_FASE_A.md](EXECUCAO_FASE_A.md) | **Registro de execução da Fase A**: log por item, considerações, desvios documentados e bloqueios |
 | [EXECUCAO_FASE_B.md](EXECUCAO_FASE_B.md) | **Registro de execução da Fase B** (chamados reais): decisões de produto forçadas pelo contrato, implementação e validação |
 | [EXECUCAO_FASE_C.md](EXECUCAO_FASE_C.md) | **Registro de execução da Fase C** (alertas/push/sessões): backend-first, prompt de contratos e considerações |
+| [EXECUCAO_FASE_D.md](EXECUCAO_FASE_D.md) | **Registro de execução da Fase D** (conformidade/TestFlight): exclusão de conta (I9), jurídico, submissão |
 | [PLANO_IMPLANTACAO_GAPS.md](PLANO_IMPLANTACAO_GAPS.md) | (Histórico, substituído pela V2) Análise original real vs. mock do app Cliente |
 | [INTEGRACAO_BACKEND.md](INTEGRACAO_BACKEND.md) | Contrato da API `/api/v3/app`: base URL, autenticação Bearer, endpoints e cliente HTTP de referência |
 | [IDENTIDADE_VISUAL.md](IDENTIDADE_VISUAL.md) | Cores, tipografia e uso da marca OnWay no aplicativo |
