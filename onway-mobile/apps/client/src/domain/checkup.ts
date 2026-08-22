@@ -24,6 +24,9 @@ export type CheckupReport = {
   score: number;
   headline: string;
   issues: number;
+  assessed: number;
+  total: number;
+  incomplete: boolean;
   generatedAt: string;
   items: CheckupItem[];
 };
@@ -103,8 +106,8 @@ function forecastCheck(plant: Plant): CheckupItem {
   };
 }
 
-function scoreHeadline(score: number) {
-  if (score >= 90) return 'Sistema saudável';
+function scoreHeadline(score: number, issues: number, incomplete: boolean) {
+  if (issues === 0) return incomplete ? 'Verificação parcial' : 'Tudo certo nas verificações';
   if (score >= 75) return 'Bom, com pontos de atenção';
   if (score >= 50) return 'Requer atenção';
   return 'Verificação técnica recomendada';
@@ -119,13 +122,19 @@ export function runCheckup(plant: Plant): CheckupReport {
   const penalties = items.reduce((sum, item) => sum + STATUS_PENALTY[item.status], 0);
   const score = Math.max(0, Math.min(100, Math.round(100 - penalties)));
   const issues = items.filter((item) => item.status === 'attention' || item.status === 'critical').length;
+  const assessed = items.filter((i) => i.status !== 'info').length;
+  const total = items.length;
+  const incomplete = assessed < total;
 
   return {
     plantId: plant.id,
     plantName: plant.name,
     score,
-    headline: scoreHeadline(score),
+    headline: scoreHeadline(score, issues, incomplete),
     issues,
+    assessed,
+    total,
+    incomplete,
     generatedAt: new Date().toISOString(),
     items,
   };

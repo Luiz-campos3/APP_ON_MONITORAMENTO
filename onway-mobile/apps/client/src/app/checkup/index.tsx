@@ -153,20 +153,27 @@ function CheckupResult({ report }: { report: CheckupReport }) {
     attention: brand.warning,
     critical: brand.danger,
   };
-  const ringColor = report.score >= 90 ? brand.green : report.score >= 75 ? '#5BBF8A' : report.score >= 50 ? brand.warning : brand.danger;
+  const ringColor =
+    report.incomplete && report.issues === 0
+      ? colors.textSecondary
+      : report.score >= 90 ? brand.green : report.score >= 75 ? '#5BBF8A' : report.score >= 50 ? brand.warning : brand.danger;
   const time = new Date(report.generatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <>
       <Card style={styles.scoreCard}>
         <View style={[styles.scoreRing, { borderColor: ringColor }]}>
-          <Text style={[styles.scoreValue, { color: colors.text }]}>{report.score}</Text>
-          <Text style={[styles.scoreMax, { color: colors.textSecondary }]}>/100</Text>
+          <Text style={[styles.scoreValue, { color: colors.text }]}>{report.incomplete ? report.assessed : report.score}</Text>
+          <Text style={[styles.scoreMax, { color: colors.textSecondary }]}>{report.incomplete ? `/${report.total}` : '/100'}</Text>
         </View>
         <View style={styles.scoreInfo}>
           <Text style={[styles.scoreHeadline, { color: colors.text }]}>{report.headline}</Text>
           <Text style={[styles.scoreSub, { color: colors.textSecondary }]}>
-            {report.issues === 0 ? 'Nenhum ponto de atenção encontrado.' : `${report.issues} ponto${report.issues > 1 ? 's' : ''} de atenção.`}
+            {report.issues > 0
+              ? `${report.issues} ponto${report.issues > 1 ? 's' : ''} de atenção.`
+              : report.incomplete
+                ? `${report.total - report.assessed} verificação${report.total - report.assessed > 1 ? 'ões' : ''} sem dados suficientes.`
+                : 'Nenhum ponto de atenção encontrado.'}
           </Text>
           <Text style={[styles.scoreSub, { color: colors.textSecondary }]}>{report.plantName} · {time}</Text>
         </View>

@@ -106,11 +106,12 @@ describe('checagem de prognóstico', () => {
 });
 
 describe('score e resumo', () => {
-  it('sistema saudável quando tudo ok', () => {
+  it('tudo certo quando tudo ok e completo', () => {
     const report = runCheckup(plant());
     expect(report.score).toBe(100);
-    expect(report.headline).toBe('Sistema saudável');
+    expect(report.headline).toBe('Tudo certo nas verificações');
     expect(report.issues).toBe(0);
+    expect(report.incomplete).toBe(false);
   });
 
   it('penaliza atenção sem derrubar o score para crítico', () => {
@@ -131,5 +132,20 @@ describe('score e resumo', () => {
     const report = runCheckup(plant());
     expect(report.items).toHaveLength(2);
     expect(report.items.every((item) => item.real)).toBe(true);
+  });
+
+  it('verificação parcial quando o prognóstico não foi avaliado', () => {
+    const report = runCheckup(plant({ expectedMonthToDate: 0, forecastSource: 'sem_historico' }));
+    expect(report.incomplete).toBe(true);
+    expect(report.assessed).toBe(1);
+    expect(report.total).toBe(2);
+    expect(report.headline).toBe('Verificação parcial');
+    expect(report.score).toBe(100);
+  });
+
+  it('tudo certo quando todas as dimensões foram avaliadas sem problemas', () => {
+    const report = runCheckup(plant());
+    expect(report.incomplete).toBe(false);
+    expect(report.headline).toBe('Tudo certo nas verificações');
   });
 });
