@@ -258,12 +258,11 @@ Cada entrada rastreia **Correção** e **Em produção** (ver convenção no §1
 - **Correção:** pílula removida (com os estilos órfãos); sem campo real de status, o app não afirma "ativo". Princípio "só exibir dado real".
 - **Em produção:** ⏳ pendente de build.
 
-**ISS-033 · Contato/Suporte hardcoded; botão WhatsApp aponta para telefone fixo** — `Média` · Fase D · 👤🛠️ · 🔴 Aberto
+**ISS-033 · Contato/Suporte hardcoded; botão WhatsApp aponta para telefone fixo** — `Média` · Fase D · 👤🛠️ · 🟢 Resolvido — **não era defeito** (`c/ comentário em contact.ts`) · Em produção: ⏳ aguarda build
 - **Categoria:** mock/hardcoded / fidelidade
-- **Evidência:** `config/contact.ts:1,14` cai no literal `+556140428218` (env `EXPO_PUBLIC_ONWAY_PHONE`/`_WHATSAPP` não setadas); `whatsapp ?? phone` faz o botão abrir `wa.me/556140428218` — um fixo (DDD 61) que provavelmente não tem WhatsApp. Horário "8h–18h" também fixo (`support.tsx:82`).
-- **Depende de:** 👤 números reais (telefone + WhatsApp da OnWay) para popular via env/config.
-- **Ação:** obter os números reais; e ajustar a lógica para **não** oferecer WhatsApp quando não há número de WhatsApp real (evitar conversa que não abre).
-- **Em produção:** ⏳ pendente (precisa do dado do usuário).
+- **Suspeita original:** `config/contact.ts` cai no literal `+556140428218` e `whatsapp ?? phone` abriria `wa.me/…` de um fixo (DDD 61) sem WhatsApp; horário "8h–18h" fixo (`support.tsx:82`).
+- **Resolução (confirmado com o cliente 22/08):** o telefone é o **oficial**, o **WhatsApp é o mesmo número** (o botão abre conversa de verdade — o `?? phone` cai no número certo, é intencional), e o horário está **correto**. Não é dado fabricado — é a config pública real. Sem mudança de comportamento; adicionado comentário em `contact.ts` para não ser "corrigido" por engano nem re-sinalizado.
+- **Em produção:** ⏳ pendente de build (o comentário entra no próximo build).
 
 **ISS-035 · Checkup: score /100 aparenta diagnóstico completo, cobre só 2 dimensões** — `Média` · Fase E · 🛠️ · 🔴 Aberto
 - **Categoria:** derivado-que-engana / fidelidade

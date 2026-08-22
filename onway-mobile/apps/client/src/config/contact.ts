@@ -1,3 +1,7 @@
+// Contatos oficiais da OnWay (confirmados com o cliente em 22/08/2026). Não há
+// endpoint de contato no backend — é config pública, não segredo. O env permite
+// trocar sem rebuild. O WhatsApp é o MESMO número do telefone, por isso o
+// `?? phone` abaixo é INTENCIONAL (não é bug: cai no número certo, que tem WhatsApp).
 const phone = process.env.EXPO_PUBLIC_ONWAY_PHONE ?? '+556140428218';
 
 function formatPhoneDisplay(value: string) {
