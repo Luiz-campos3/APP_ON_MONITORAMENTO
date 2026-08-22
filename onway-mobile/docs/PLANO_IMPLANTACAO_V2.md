@@ -73,7 +73,7 @@ Nada abaixo é código: são decisões ou artefatos que só a OnWay/backend pode
 
 - [x] CI no GitHub Actions: `tsc --noEmit` + eslint + testes obrigatórios em push/PR — `.github/workflows/ci.yml` criado em 19/08; **valida no primeiro push**.
 - [x] *(Revisão 1)* CI inclui `npm audit` com gate em **critical** e scanner de segredos (**gitleaks**). Gate em `high` fica bloqueado pelas vulnerabilidades do toolchain Expo/Metro que só resolvem no upgrade de SDK — triagem registrada em `EXECUCAO_FASE_A.md`; subir o gate para `high` quando migrar para SDK 57+.
-- [x] Testes unitários (jest-expo): **9 suítes** — `domain/*` (client, contract, generation-calculations, checkup, payback, **alert**, **session**, **support**) + `services/error-envelope`; ~130 testes em 22/08 e crescendo a cada correção (contagem exata sai no CI). *(A menção original a "74 testes em 5 suítes" ficou desatualizada — ISS-029.)*
+- [x] Testes unitários (jest-expo): **10 suítes** — `domain/*` (client, contract, generation-calculations, checkup, payback, **alert**, **session**, **support**) + `services/error-envelope` + **`services/mobile-api`** (retry/refresh HTTP, Lote 2); **138 testes** em 22/08 e crescendo a cada correção (contagem exata sai no CI). *(A menção original a "74 testes em 5 suítes" ficou desatualizada — ISS-029.)*
 - [x] Adicionar **PATCH/DELETE** à camada HTTP (`raw()` e `requestWithAuth` em `mobile-api.ts`) — pré-requisito transversal das Fases C e E (19/08).
 - [x] *(Revisão 1)* **Ocultar o card de payback atrás de flag** (`EXPO_PUBLIC_ENABLE_PAYBACK`, default desligado) — `src/config/features.ts` (19/08); religa quando I5 chegar.
 - [ ] *(Revisão 1)* Crash reporting sanitizado (sem PII, sem tokens) — **antecipado da Fase D**; bloqueado apenas por I10 (DSN).

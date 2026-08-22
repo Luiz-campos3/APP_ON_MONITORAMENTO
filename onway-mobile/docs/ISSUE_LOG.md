@@ -2,7 +2,7 @@
 
 **Fonte única de pendências da fase de refinamento (rotinas, telas, processos).**
 
-**Criado:** 22/08/2026 · **Última revisão:** 22/08/2026
+**Criado:** 22/08/2026 · **Última revisão:** 22/08/2026 (encerramento do dia — Lote 2 mergeado)
 **Base:** `PLANO_IMPLANTACAO_V2.md` (rev. 2) + `EXECUCAO_FASE_A..D.md` + `INTEGRACAO_BACKEND.md`, conciliados com o **código real** (73 arquivos em `apps/client/src`) e os 2 branches staged.
 **Método:** duas auditorias independentes (técnica × processos) + verificação manual do GP dos achados críticos. 49 achados brutos → **29 issues** consolidadas.
 
@@ -35,6 +35,19 @@
 **Distribuição por dono do gargalo:** 👤 usuário domina o caminho crítico (I4, I5, I6, I8, I10 + validações no aparelho). 🖥️ backend deve o deploy do #42 e o contrato de push. 🛠️ dev tem itens de qualidade/merge, todos destravados.
 
 **Encontradas e resolvidas fora das auditorias:** 1 — **ISS-030** (bug do histórico no modo Ano, ver §8 Resolvidas). Não conta no total de 29 (abertas).
+
+### Progresso da execução (encerramento 22/08/2026)
+
+Duas levas de correção fechadas e mergeadas na `main`, cada uma após gate verde (`tsc --noEmit` + `eslint --max-warnings 0` + `jest`):
+
+- **Lote 1** — merge `c69322d`: ISS-011, ISS-015, ISS-024, ISS-028, ISS-029, ISS-039.
+- **Lote 2** — merge `a9e78dc`: ISS-013 (testes do cliente HTTP), ISS-022 (dead code do checkup), ISS-023 (estado morto de notificação — **parcial**; o viewer de anexo segue em ISS-021).
+- **Auditoria de fidelidade (22/08):** ISS-030 → ISS-039 tratados (ver §3b e §8).
+- **Suíte atual:** **10 suítes / 138 testes** verdes.
+- **Em produção (app-side):** ⏳ **tudo** pendente do mesmo gargalo — build/publicação travada por **ISS-002 (conta Apple)**, adiada por decisão do usuário ("para quando tudo estiver pronto e validado").
+- **Backlog app-side sem dependência externa: ~zero.** O que resta é 👤 input do usuário, 🖥️ contrato de backend, ou 🛠️ Fase E (ISS-021/025).
+
+**Próximos passos (retomada):** maior alavanca de baixo custo = validação visual do **ISS-039** em aparelho (distinção Atenção âmbar / Crítico vermelho), idealmente com uma usina real em `warning`/`error` vinculada temporariamente. Em paralelo: destravar **ISS-002** (Apple) e o **contrato de push (ISS-006)** com o backend.
 
 ---
 
@@ -223,7 +236,7 @@
 - **Evidência:** era um rascunho **untracked** (nunca commitado), provável esboço da issue #39 (usinas que nunca geraram); não existe mais no disco nem no git.
 - **Resolução (22/08):** **ignorado** — não recriar. Nada de valor foi perdido (nunca esteve versionado). O tema #39 (usinas sem geração / expectativa fleet-wide) já é rastreado em **ISS-016** (confirmação de deploy do backend).
 
-**ISS-029 · Documentação desatualizada (contagem de testes)** — `Baixa` · Fase A · 🛠️ · 🟢 Corrigido (Lote 1) — `PLANO_IMPLANTACAO_V2.md` atualizado (9 suítes, ~133 testes em 22/08).
+**ISS-029 · Documentação desatualizada (contagem de testes)** — `Baixa` · Fase A · 🛠️ · 🟢 Corrigido (Lote 1; re-sincronizado no Lote 2) — `PLANO_IMPLANTACAO_V2.md` atualizado para **10 suítes / 138 testes** (o Lote 2 acrescentou a suíte `services/mobile-api`).
 - **Categoria:** governança/doc
 - **Evidência:** `PLANO_IMPLANTACAO_V2.md` §3 A1 diz "74 testes em 5 suítes"; existem **9 suítes** (adicionadas alert/session/support/error-envelope).
 - **Depende de:** nada.
