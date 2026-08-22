@@ -128,10 +128,10 @@ describe('score e resumo', () => {
     expect(report.issues).toBe(2);
   });
 
-  it('só usa checagens reais (comunicação e prognóstico)', () => {
+  it('avalia apenas comunicação e prognóstico', () => {
     const report = runCheckup(plant());
     expect(report.items).toHaveLength(2);
-    expect(report.items.every((item) => item.real)).toBe(true);
+    expect(report.items.map((item) => item.label)).toEqual(['Comunicação', 'Geração x prognóstico']);
   });
 
   it('verificação parcial quando o prognóstico não foi avaliado', () => {

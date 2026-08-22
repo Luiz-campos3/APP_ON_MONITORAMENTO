@@ -193,7 +193,6 @@ function CheckupResult({ report }: { report: CheckupReport }) {
             <View style={styles.itemBody}>
               <View style={styles.itemHead}>
                 <Text style={[styles.itemLabel, { color: colors.text }]}>{item.label}</Text>
-                {!item.real ? <Text style={[styles.itemTag, { color: colors.textSecondary, borderColor: colors.border }]}>simulado</Text> : null}
               </View>
               <Text style={[styles.itemDetail, { color: colors.textSecondary }]}>{item.detail}</Text>
             </View>
@@ -241,7 +240,6 @@ const styles = StyleSheet.create({
   itemBody: { flex: 1, gap: 3 },
   itemHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   itemLabel: { fontSize: 13, fontWeight: '800' },
-  itemTag: { fontSize: 8, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 6, paddingVertical: 2 },
   itemDetail: { fontSize: 11, lineHeight: 15 },
   itemValuePill: { borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 5 },
   itemValue: { fontSize: 12, fontWeight: '800' },

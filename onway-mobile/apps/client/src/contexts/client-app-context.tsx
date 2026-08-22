@@ -4,8 +4,6 @@ import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, 
 export type NotificationPreferences = {
   plantOffline: boolean;
   lowGeneration: boolean;
-  monthlyReport: boolean;
-  serviceUpdates: boolean;
 };
 
 type ClientAppContextValue = {
@@ -18,8 +16,6 @@ const NOTIFICATIONS_KEY = '@onway/notification-preferences';
 const initialNotifications: NotificationPreferences = {
   plantOffline: true,
   lowGeneration: true,
-  monthlyReport: true,
-  serviceUpdates: true,
 };
 
 const ClientAppContext = createContext<ClientAppContextValue | null>(null);
@@ -30,7 +26,15 @@ export function ClientAppProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     AsyncStorage.getItem(NOTIFICATIONS_KEY)
       .then((savedNotifications) => {
-        if (savedNotifications) setNotifications(JSON.parse(savedNotifications));
+        if (!savedNotifications) return;
+        // Só relê as chaves conhecidas: dados antigos podem trazer preferências
+        // já removidas (monthlyReport/serviceUpdates) — são ignoradas, e chaves
+        // ausentes caem no default. Assim o formato antigo não quebra o app.
+        const parsed = JSON.parse(savedNotifications) as Partial<NotificationPreferences>;
+        setNotifications({
+          plantOffline: parsed.plantOffline ?? initialNotifications.plantOffline,
+          lowGeneration: parsed.lowGeneration ?? initialNotifications.lowGeneration,
+        });
       })
       .catch(() => undefined);
   }, []);

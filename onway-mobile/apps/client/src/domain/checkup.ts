@@ -14,8 +14,6 @@ export type CheckupItem = {
   status: CheckStatus;
   ios: IconName['ios'];
   android: string;
-  /** true quando o valor vem da API; false quando é simulado. */
-  real: boolean;
 };
 
 export type CheckupReport = {
@@ -32,11 +30,10 @@ export type CheckupReport = {
 };
 
 export const CHECKUP_STEPS = [
-  'Conectando à usina',
-  'Verificando comunicação',
-  'Lendo geração atual',
+  'Analisando a comunicação',
+  'Conferindo a geração do mês',
   'Comparando com o prognóstico',
-  'Consolidando resultado',
+  'Consolidando o resultado',
 ];
 
 function hoursSince(iso: string | null) {
@@ -79,7 +76,6 @@ function communicationCheck(plant: Plant): CheckupItem {
     status,
     ios: 'antenna.radiowaves.left.and.right',
     android: 'sensors',
-    real: true,
   };
 }
 
@@ -102,7 +98,6 @@ function forecastCheck(plant: Plant): CheckupItem {
     status,
     ios: 'chart.line.uptrend.xyaxis',
     android: 'trending_up',
-    real: true,
   };
 }
 

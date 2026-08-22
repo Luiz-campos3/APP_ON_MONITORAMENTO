@@ -126,11 +126,11 @@
 - **Categoria:** staged/merge
 - **Resolução (22/08):** os **3 branches mergeados** na `main` sem conflito (auto-merge `ort`) e removidos: `fix/historico-ano` (`123b8ef`), `feat/acessibilidade` (`ac6f31b`), `feat/exclusao-conta` (`36ba1a2`). **Nenhum branch aberto** — `main` é a única. Gate verde após cada merge.
 
-**ISS-013 · Cobertura de testes: cliente HTTP, contexts e strip de EXIF sem teste** — `Média` · transversal · 🛠️ · 🔴 Aberto
+**ISS-013 · Cobertura de testes: cliente HTTP, contexts e strip de EXIF sem teste** — `Média` · transversal · 🛠️ · 🟢 Corrigido (Lote 2) · Em produção: ⏳ (pendente de build — ISS-002) — nova suíte `services/__tests__/mobile-api.test.ts` (5 testes, `global.fetch` + `expo-secure-store` mockados): 429→retry→200 (fake timers), 401→refresh→rotação de tokens→reexecução, 401 persistente→`clearTokens`+sessão expirada, 429 em mutação NÃO reexecuta, 403 `PASSWORD_CHANGE_REQUIRED`→handler+`ApiError`. Total do projeto: **10 suítes / 138 testes**.
 - **Categoria:** teste-faltante
 - **Evidência:** 9 suítes existem (todas em `domain/*` + `error-envelope`). **Sem teste:** `services/mobile-api.ts` (retry 429, refresh/rotação, single-flight, handler 403 `PASSWORD_CHANGE_REQUIRED`), todos os `contexts/*`, `services/photo.ts` (remoção de EXIF) e a nova `delete-account.tsx`.
 - **Depende de:** nada.
-- **Ação:** priorizar testes do retry/refresh do `mobile-api` e do strip de EXIF (ambos são risco de segurança/robustez).
+- **Ação:** priorizar testes do retry/refresh do `mobile-api` e do strip de EXIF (ambos são risco de segurança/robustez). **Feito o núcleo (mobile-api).** Pendências deliberadamente puladas (registradas para follow-up): single-flight do refresh sob concorrência (asserção sensível a interleaving → risco de flaky) e o strip de EXIF em `photo.ts` (`processImage`/`fromAsset` não são exportados e o mock de `fetch` do arquivo colidiria com o `fetch(uri).blob()` de `fileByteSize` — pede um `photo.test.ts` dedicado).
 
 **ISS-014 · Aceite em aparelho físico pendente + status da Fase A superestimado** — `Média` · Fase A · 👤🛠️🖥️ · 🟡 Em validação
 - **Categoria:** validação / critério-de-saída
@@ -182,17 +182,17 @@
 - **Depende de:** início da Fase E.
 - **Ação:** implementar visualização de anexo, câmera e lista global quando a Fase E iniciar.
 
-**ISS-022 · Dead code / teatro de UX no Checkup** — `Baixa` · Fase A/E · 🛠️ · 🔴 Aberto
+**ISS-022 · Dead code / teatro de UX no Checkup** — `Baixa` · Fase A/E · 🛠️ · 🟢 Corrigido (Lote 2) · Em produção: ⏳ (pendente de build — ISS-002) — removido o campo `real` de `CheckupItem` e o ramo/tag "simulado" (nunca alcançado) do `checkup/index.tsx`; `CHECKUP_STEPS` reescrito para 4 passos honestos ("Analisando a comunicação", "Conferindo a geração do mês", "Comparando com o prognóstico", "Consolidando o resultado") e a animação passou a usar `CHECKUP_STEPS.length` (sem `5` hard-coded). Teste renomeado para "avalia apenas comunicação e prognóstico".
 - **Categoria:** dead-code
 - **Evidência:** `domain/checkup.ts:116-117` só gera itens `real:true`, mas `checkup/index.tsx:186` renderiza ramo `!item.real` ("simulado") **nunca alcançado**; animação de scanning (`:39-49`) roda `setInterval` fixo enquanto o checkup já rodou síncrono.
 - **Depende de:** nada.
 - **Ação:** remover o campo `real`/tag "simulado"; manter ou rotular a animação (sem impacto funcional).
 
-**ISS-023 · Estado morto de notificação + anexos sem visualizador** — `Baixa` · Fase C · 🛠️ · 🔴 Aberto
+**ISS-023 · Estado morto de notificação + anexos sem visualizador** — `Baixa` · Fase C · 🛠️ · 🟡 Parcial (Lote 2) · Em produção: ⏳ (pendente de build — ISS-002) — removido o estado morto `monthlyReport`/`serviceUpdates` de `NotificationPreferences` (tipo + defaults), confirmado zero consumidores por grep; o loader do storage agora relê **só** as chaves conhecidas com `??` (preserva `false`, ignora chaves antigas — formato legado não quebra o app). **Falta ainda** o viewer de anexo (fica com ISS-021, Fase E).
 - **Categoria:** dead-code
 - **Evidência:** `client-app-context.tsx:8-9,22-23` persiste `monthlyReport`/`serviceUpdates` sem consumidor; `GET /chamados/:id/anexo` (contrato) e o anexo da fatura sem viewer (`tickets/[id].tsx:111-116` só exibe "Foto anexada").
 - **Depende de:** contrato de preferências (ISS-006) para o estado de notificação.
-- **Ação:** reintroduzir com sincronização real ou remover o estado morto; adicionar viewer de anexo quando priorizado.
+- **Ação:** reintroduzir com sincronização real ou remover o estado morto; adicionar viewer de anexo quando priorizado. **Estado morto removido; viewer de anexo permanece em ISS-021.**
 
 **ISS-024 · Foto do chamado sem guarda explícita de 10 MB** — `Baixa` · Fase B · 🛠️ · 🟢 Corrigido (Lote 1) · Em produção: ⏳ — `photo.ts` afere o tamanho pós-compressão (via `blob`, sem nova dependência) e bloqueia >10 MB com erro claro; best-effort (se não medir, não bloqueia — servidor ainda barra com 400).
 - **Categoria:** bug-potencial (defensivo)
