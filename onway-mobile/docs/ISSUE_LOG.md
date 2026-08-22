@@ -22,9 +22,9 @@
 |---|---|---|
 | 🟥 Crítica | 5 | ISS-001 … ISS-005 |
 | 🟧 Alta | 7 | ISS-006 … ISS-011, ISS-031 |
-| 🟨 Média | 12 | ISS-012 … ISS-020, ISS-032, ISS-033, ISS-035 |
+| 🟨 Média | 13 | ISS-012 … ISS-020, ISS-032, ISS-033, ISS-035, ISS-039 |
 | 🟩 Baixa | 13 | ISS-021 … ISS-029, ISS-034, ISS-036, ISS-037, ISS-038 |
-| **Total** | **37** | + ISS-030 resolvida (§8) |
+| **Total** | **38** | + ISS-030 resolvida (§8) |
 
 > **Convenção de status (dois eixos):** cada issue rastreia **Correção** (código feito/mergeado) **e** **Em produção** (de fato no ar). Para correção **app-side**, "em produção" = build EAS/TestFlight publicado — hoje **⏳ pendente** (sem conta Apple, ISS-002); para **backend**, "em produção" = deploy confirmado. Princípio que guia as correções: **o app deve sempre ler o dado real do backend**, nunca fabricar/hardcodar valor exibido como dado.
 
@@ -54,11 +54,11 @@
 
 ### 🟥 Críticas
 
-**ISS-001 · Senha da conta de teste commitada em documento versionado** — `Crítica` · Fase C · 🛠️🖥️ · 🔴 Aberto
+**ISS-001 · Senha da conta de teste commitada em documento versionado** — `Crítica` · Fase C · 🛠️🖥️ · 🟢 Resolvido (risco neutralizado)
 - **Categoria:** governança/segurança
-- **Evidência:** `EXECUCAO_FASE_C.md:704` ("senha … rotacionada para `grampo-telha-bucha-32`"), presente no HEAD `a70c6d9`. Viola a regra "credenciais só no `.env`", que a Fase A seguiu à risca.
-- **Depende de:** nada — ação imediata.
-- **Ação:** ver §2 (rotacionar + redigir + reforçar gitleaks).
+- **Evidência:** uma senha de teste estava escrita em `EXECUCAO_FASE_C.md` (commitada na `main`), violando "credenciais só no `.env`".
+- **Resolução (22/08):** 🖥️ backend **rotacionou** a senha da conta `luiz.onwayenergy` (`setSenha` + `revokeAllByUser`, 21 sessões revogadas) → a senha vazada ficou **inválida**; 🛠️ **redigi o doc** (removida de `EXECUCAO_FASE_C.md`, agora só aponta pro `.env`) e atualizei o `.env` local com a nova senha. O risco está neutralizado.
+- **Opcional (decisão do usuário):** saneamento do histórico do git — desnecessário, pois a credencial vazada já é inválida. `gitleaks` para `*.md` fica como melhoria de CI.
 
 **ISS-002 · Conta Apple Developer + acesso ao App Store Connect (I6)** — `Crítica` · Fase C/D · 👤 · ⛔ Bloqueado
 - **Categoria:** input-externo · **é o maior ponto de alavancagem do projeto**
@@ -66,11 +66,10 @@
 - **Depende de:** contratar o Apple Developer Program (pago) + habilitar APNs.
 - **Ação:** contratar a conta Apple da empresa. Destrava, de uma vez: TestFlight (ISS-005), teste e2e de push (ISS-006), `eas.json > submit` e o dev build iOS.
 
-**ISS-003 · Deploy do PR #42 — endpoint de exclusão de conta (I9)** — `Crítica` · Fase D · 🖥️ · ⛔ Bloqueado
+**ISS-003 · Deploy do PR #42 — endpoint de exclusão de conta (I9)** — `Crítica` · Fase D · 🖥️ · 🟢 Resolvido — **em produção**
 - **Categoria:** deploy/release
-- **Evidência:** `EXECUCAO_FASE_D.md` "I9 — contrato recebido (PR #42, pendente de deploy · sem migration)".
-- **Depende de:** backend fazer o deploy (sem migration).
-- **Ação:** deployar o `POST /me/exclusao` para destravar a validação e o merge (ISS-007). Exigência dura da App Review 5.1.1(v).
+- **Resolução (22/08):** PR #42 mergeado (`b8e4139`) e deployado em produção como **v1.7.3** (release `edf35c3`, `producao.env` promovido), confirmado pelo filtro de imagem (`ghcr.io/…/monitoramento-backend:v1.7.3` healthy), zero erro no log, sem migration. Smoke: senha errada → 403 `SENHA_ATUAL_INVALIDA`.
+- **Em produção:** ✅ (backend — é deploy de servidor, não depende de build do app).
 
 **ISS-004 · Textos jurídicos (privacidade, termos, exclusão) + revisão da constante `RETENCAO` (I4)** — `Crítica` · Fase D · 👤 · ⛔ Bloqueado
 - **Categoria:** jurídico/LGPD
@@ -92,11 +91,10 @@
 - **Depende de:** 👤 repassar o prompt ao backend → 🖥️ devolver contrato (push-tokens, preferências, categorias, anti-spam) → 🛠️ integrar `expo-notifications` + deep link no dev build (exige I6/APNs). Risco correlato: push só validável fora do Expo Go.
 - **Ação:** fechar o contrato, instalar `expo-notifications`, implementar registro/deep link e validar no dev client.
 
-**ISS-007 · Validar exclusão de conta contra produção e mergear `feat/exclusao-conta`** — `Alta` · Fase D · 🛠️ · ⛔ Bloqueado
+**ISS-007 · Validar exclusão de conta contra produção e mergear `feat/exclusao-conta`** — `Alta` · Fase D · 🛠️ · 🟢 Corrigido (mergeado na `main`) · Em produção: ⏳
 - **Categoria:** merge
-- **Evidência:** branch `feat/exclusao-conta` (`a919152`): `settings/delete-account.tsx` + `mobileApi.deleteAccount`. Na `main`, `privacy.tsx` ainda diz "Encerramento indisponível".
-- **Depende de:** deploy do #42 (ISS-003). A mecânica não depende do I4; só o texto fino da tela.
-- **Ação:** após o deploy, validar (senha errada→403, exclusão→200, login excluído→401, conta irmã intacta), rebasear em `main` e mergear.
+- **Resolução (22/08):** endpoint deployado (ISS-003), **validado 6/6 contra produção** numa conta descartável (senha errada→403, exclusão→200, login excluído→401, conta irmã do mesmo cliente intacta). `feat/exclusao-conta` **mergeado na `main`** (auto-merge limpo com fidelidade + acessibilidade; `privacy.tsx` ficou com a entrada "Excluir minha conta" + a11y). Contrato registrado no `INTEGRACAO_BACKEND.md`. Textos legais (`retido[]`) vêm do servidor — refino do I4 aparece sozinho.
+- **Em produção:** ⏳ o app-side depende de build (ISS-002); o backend já está no ar.
 
 **ISS-008 · Testar VoiceOver e mergear `feat/acessibilidade`** — `Alta` · Fase D · 👤🛠️ · 🟢 Mergeado (`ac6f31b`, `main`) · ⚠️ VoiceOver no aparelho ainda não feito · Em produção: ⏳
 - **Categoria:** validação
@@ -246,8 +244,9 @@ Cada entrada rastreia **Correção** e **Em produção** (ver convenção no §1
 - **Categoria:** divergência-contrato (drift de nome de campo) / fidelidade
 - **O que o usuário vê:** selo "Online/Atenção/Offline" da usina.
 - **Evidência:** `ApiPlant` declarava `alerta: boolean` (`mobile-api.ts:54`) e `plantStatus`/`toPlant` liam `plant.alerta` (`domain/client.ts:82,122`); **a produção envia `temAlerta` + `alertaMensagem`** e **nenhum código lia esses campos** (grep zero). O selo não refletia a flag de alerta real.
-- **Correção:** `plantStatus`/`toPlant` passam a ler `plant.temAlerta ?? plant.alerta ?? false`; `ApiPlant` ganhou `temAlerta`/`alertaMensagem` (e `alerta` virou legado opcional). **Validado contra produção:** `temAlerta` presente em 4/4 usinas; derivação de status consistente. +1 teste (fallback legado); tsc/eslint/123 testes verdes.
-- **Follow-up (não bloqueia):** exibir `alertaMensagem` na UI (hoje capturado no tipo, ainda não renderizado).
+- **Correção:** `plantStatus`/`toPlant` passam a ler `plant.temAlerta ?? plant.alerta ?? false`; `ApiPlant` ganhou `temAlerta`/`alertaMensagem` (e `alerta` virou legado opcional). +1 teste; tsc/eslint verdes.
+- **Contrato confirmado pelo backend (22/08):** `temAlerta`/`alertaMensagem` são definitivos; `alerta` **nunca existiu** (fallback é código morto inofensivo). `temAlerta === status !== 'ok'`, com `status` ∈ `'ok'|'warning'|'error'|null`. `alertaMensagem` = "Operação Normal" quando ok, `null` só quando a usina nunca foi coletada (app deve tolerar). Registrado no `INTEGRACAO_BACKEND.md`.
+- **Follow-up (não bloqueia):** ver **ISS-039** (fonte do selo: portal do fabricante × feed da Central de Alertas + distinguir warning/error) e exibir `alertaMensagem` na UI.
 - **Em produção:** ⏳ pendente de build (não há loja/TestFlight até ISS-002).
 
 ### 🟨 Média
@@ -295,6 +294,15 @@ Cada entrada rastreia **Correção** e **Em produção** (ver convenção no §1
 - **Evidência:** `tickets/[id].tsx:126-142` pintava todo evento como concluído (verde + check); título/data são reais (backend), mas o backend não manda status por evento.
 - **Correção:** o marcador virou um ponto **neutro** (accent, sem check) — a timeline mostra eventos registrados em ordem, sem afirmar "aprovado/concluído". Título/data seguem reais.
 - **Em produção:** ⏳ pendente de build.
+
+### Follow-up de decisão (surgiu da confirmação do contrato — não é um dos 8 fixes)
+
+**ISS-039 · Fonte e granularidade do selo "Atenção" da usina** — `Média` · Fase C · 👤🛠️ · 🔴 Aberto (decisão de produto)
+- **Categoria:** decisão de produto / fidelidade
+- **Contexto (backend 22/08):** hoje o selo lê `temAlerta` = **status do portal do fabricante** (`status !== 'ok'`). Existe uma **segunda fonte**, a Central de Alertas (`/alertas`), e as duas **podem discordar** — `baixa_geracao`/`sem_comunicacao` do feed **não** acendem `temAlerta`. Além disso, `status` é `'ok'|'warning'|'error'`, permitindo distinguir **atenção (warning)** de **crítico (error)** sem campo novo.
+- **Decisões:** (1) o selo deve refletir o **portal** (atual) ou o **feed** da Central de Alertas? (2) distinguir warning/error (amarelo/vermelho) no selo? (3) robustecer `plantStatus` para usar o enum `status` em vez do `includes('erro')` frágil.
+- **Depende de:** 👤 decisão de produto (1 e 2) → 🛠️ implementação.
+- **Ação:** decidir a fonte canônica do selo e a granularidade; então ajustar `plantStatus`.
 
 ---
 

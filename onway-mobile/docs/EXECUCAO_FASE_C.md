@@ -701,9 +701,9 @@ efêmero = `baixa_geracao` (IE UFV-1); resolvido durável = `baixa_geracao` (IE 
 Todos com `payload->>'origem'='semeado_para_validacao_app'` — backend remove num comando
 quando terminarmos a validação (anotado no producao.env).
 
-**Credenciais:** senha da conta de teste rotacionada para `grampo-telha-bucha-32`
-(atualizada no .env local, gitignorado; a anterior foi invalidada e derrubou as sessões
-daquela conta). `mustChangePassword` foi **desligado** para o teste — se quisermos voltar
+**Credenciais:** a senha da conta de teste vive **apenas no `.env` local (gitignorado)** —
+nunca neste doc (ver ISS-001: a senha antes registrada aqui foi tratada como vazada e
+rotacionada no backend em 22/08). `mustChangePassword` foi **desligado** para o teste — se quisermos voltar
 a exercitar o fluxo de troca forçada, pedir ao backend para rearmar.
 
 **Para o teste visual no aparelho:** os 3 semeados estão `lido=true`/`naoLidos=0` (a

@@ -210,8 +210,9 @@ POST /api/v3/app/usinas/:usinaId/chamados      abre um chamado (escopo = usina)
   "nome": "IE UFV-X01",
   "cidade": "…",
   "fabricante": "Sungrow",
-  "status": "…",
-  "alerta": false,
+  "status": "ok",
+  "temAlerta": false,
+  "alertaMensagem": "Operação Normal",
   "monitoramentoAtivo": true,
   "potenciaKwp": 30.0,
   "potenciaPlacaKwp": 33.6,
@@ -228,6 +229,23 @@ POST /api/v3/app/usinas/:usinaId/chamados      abre um chamado (escopo = usina)
 } ] }
 ```
 > Nunca vêm credenciais de portal, `vendor_plant_id` ou payload bruto.
+
+**Status/alerta da usina (confirmado 22/08/2026, ISS-031).** O campo real é
+`temAlerta` (boolean) + `alertaMensagem` (string) — **`alerta` nunca existiu** (o app
+corrigiu a leitura; o fallback ao legado é código morto inofensivo). Vêm do `mapUsina`,
+idênticos na lista e no detalhe.
+- `status`: **`'ok' | 'warning' | 'error' | null`** — sinal mais rico; reflete o status
+  do **portal do fabricante** (os 7 coletores gravam `usinas.status`). Distribuição em
+  22/08: 318 ok, 44 warning, 161 error, 2 null.
+- `temAlerta` é literalmente **`status !== 'ok'`** → dá para distinguir atenção
+  (`warning`) de crítico (`error`) sem campo novo (follow-up de UI no app).
+- `alertaMensagem`: texto do alerta; **"Operação Normal"** quando ok (não é vazio);
+  **`null` só** quando a usina nunca foi coletada (`status` null → `temAlerta` true, msg
+  null). O app deve **tolerar mensagem nula**. Não usar `alertaMensagem != null` como
+  proxy de alerta — o booleano é `temAlerta`.
+- ⚠️ **Fonte independente da Central de Alertas** (`/alertas`): portal do fabricante e
+  feed podem discordar (`baixa_geracao`/`sem_comunicacao` do feed **não** acendem
+  `temAlerta`). Se o selo "Atenção" deve refletir o feed, o critério tem que ser o feed.
 
 **Expectativa de geração (issue #36 / PR #40, deployado e validado contra a conta
 de teste em 20/08/2026).** Derivada de `usina_leitura` (P80 do rendimento
@@ -352,6 +370,33 @@ POST /api/v3/app/alertas/marcar-lidos           body {ids?} (sem ids = todos os 
   teto de 500 ids, id alheio silenciosamente ignorado. Sem `ids` = marca todos os
   abertos do usuário.
 - **Deep link (push):** `data = {tipo:'alerta', usinaId, alertaId}`.
+
+### Exclusão de conta (I9 — PR #42 / v1.7.3, validado contra produção 22/08/2026)
+
+`POST /api/v3/app/me/exclusao` `{ currentPassword }` — reautenticação obrigatória, escopo
+do próprio usuário, **ANTES** do gate de troca de senha (Apple exige caminho sem obstáculo).
+Soft-delete com anonimização: conta = **login** (dados comerciais do cliente são retidos por
+lei; a conta irmã do mesmo cliente não é afetada).
+
+200 (imediato/irreversível) — textos **prontos do servidor** (a edição jurídica do I4 nos
+`retido[]` aparece automaticamente no app):
+```json
+{ "modo": "imediato", "dataEfetiva": "2026-08-22T19:44:43.665Z", "sessoesRevogadas": 4,
+  "removido": [ "Acesso ao aplicativo (login desativado imediatamente)",
+    "Nome, e-mail e telefone da conta", "Senha e segundo fator",
+    "Sessões e dispositivos conectados", "Preferências e marcações de leitura de alertas" ],
+  "retido": [
+    { "item": "Faturas e documentos fiscais", "prazo": "5 anos", "porque": "CTN arts. 173/174." },
+    { "item": "Contrato e registros de execução (O.S., chamados)", "prazo": "5 anos após o término do contrato", "porque": "LGPD art. 16, I e III." },
+    { "item": "Dados de geração das usinas", "prazo": "enquanto durar a relação com o titular", "porque": "São da usina/cliente, não da conta de acesso." },
+    { "item": "Registro de auditoria da própria exclusão", "prazo": "5 anos", "porque": "LGPD art. 37." } ],
+  "politicaVersao": "exclusao-conta-app/2026-08" }
+```
+Erros: **403** `errors.code=SENHA_ATUAL_INVALIDA` (senha errada), 400 (sem senha), 401 (sessão morta).
+App: `mobileApi.deleteAccount(currentPassword)` + `settings/delete-account.tsx` (aviso →
+reentrada de senha → POST → tela final com `removido[]`/`retido[]`/`dataEfetiva` → logout).
+**Validado 6/6 ao vivo** (conta descartável): senha errada→403; exclusão→200; login excluído→401;
+conta irmã intacta (loga e vê 4 usinas).
 
 ### Códigos de erro
 | Código | Quando |
