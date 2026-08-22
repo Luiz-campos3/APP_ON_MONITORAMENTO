@@ -242,19 +242,20 @@ Cada entrada rastreia **Correção** e **Em produção** (ver convenção no §1
 
 ### 🟧 Alta
 
-**ISS-031 · Status/alerta da usina lê campo inexistente (`alerta`) — `temAlerta`/`alertaMensagem` do backend são ignorados** — `Alta` · Fase C · 🛠️ · 🟡 Em correção (branch `fix/fidelidade-dados`) · Em produção: ⏳
+**ISS-031 · Status/alerta da usina lê campo inexistente (`alerta`) — `temAlerta`/`alertaMensagem` do backend são ignorados** — `Alta` · Fase C · 🛠️ · 🟢 Corrigido (`a85e02a`, `main`) · Em produção: ⏳ aguarda build (ISS-002)
 - **Categoria:** divergência-contrato (drift de nome de campo) / fidelidade
 - **O que o usuário vê:** selo "Online/Atenção/Offline" da usina.
-- **Evidência:** `ApiPlant` declara `alerta: boolean` (`mobile-api.ts:54`) e `plantStatus`/`toPlant` leem `plant.alerta` (`domain/client.ts:82,122`); **a produção envia `temAlerta` + `alertaMensagem`** (verificado ao vivo em /usinas) e **nenhum código lê esses campos** (grep zero). Logo o selo não reflete a flag de alerta real, e a mensagem do backend é descartada.
-- **Correção (planejada):** ler `temAlerta` (com fallback ao legado `alerta`) e expor `alertaMensagem`; verificar contra produção que o selo passa a refletir a flag real.
-- **Em produção:** ⏳ pendente de build.
+- **Evidência:** `ApiPlant` declarava `alerta: boolean` (`mobile-api.ts:54`) e `plantStatus`/`toPlant` liam `plant.alerta` (`domain/client.ts:82,122`); **a produção envia `temAlerta` + `alertaMensagem`** e **nenhum código lia esses campos** (grep zero). O selo não refletia a flag de alerta real.
+- **Correção:** `plantStatus`/`toPlant` passam a ler `plant.temAlerta ?? plant.alerta ?? false`; `ApiPlant` ganhou `temAlerta`/`alertaMensagem` (e `alerta` virou legado opcional). **Validado contra produção:** `temAlerta` presente em 4/4 usinas; derivação de status consistente. +1 teste (fallback legado); tsc/eslint/123 testes verdes.
+- **Follow-up (não bloqueia):** exibir `alertaMensagem` na UI (hoje capturado no tipo, ainda não renderizado).
+- **Em produção:** ⏳ pendente de build (não há loja/TestFlight até ISS-002).
 
 ### 🟨 Média
 
-**ISS-032 · Perfil: pílula "Cliente ativo" é literal fixo (não vem do `/me`)** — `Média` · Fase D · 🛠️ · 🟡 Em correção (branch `fix/fidelidade-dados`) · Em produção: ⏳
+**ISS-032 · Perfil: pílula "Cliente ativo" é literal fixo (não vem do `/me`)** — `Média` · Fase D · 🛠️ · 🟢 Corrigido (`a85e02a`, `main`) · Em produção: ⏳
 - **Categoria:** mock/hardcoded / fidelidade
-- **Evidência:** string fixa em `profile.tsx:52`; o `/me` (`ApiUser`) não tem status de conta. Sempre mostra "ativo", mesmo se a conta estiver bloqueada.
-- **Correção (planejada):** remover a pílula fabricada (sem campo real de status, o app não deve afirmar "ativo"). Segue o princípio "só exibir dado real".
+- **Evidência:** string fixa em `profile.tsx:52`; o `/me` (`ApiUser`) não tem status de conta. Sempre mostrava "ativo", mesmo se a conta estivesse bloqueada.
+- **Correção:** pílula removida (com os estilos órfãos); sem campo real de status, o app não afirma "ativo". Princípio "só exibir dado real".
 - **Em produção:** ⏳ pendente de build.
 
 **ISS-033 · Contato/Suporte hardcoded; botão WhatsApp aponta para telefone fixo** — `Média` · Fase D · 👤🛠️ · 🔴 Aberto
@@ -272,10 +273,10 @@ Cada entrada rastreia **Correção** e **Em produção** (ver convenção no §1
 
 ### 🟩 Baixa
 
-**ISS-034 · Perfil: versão do app é literal "0.1.0" (não lê `expo-constants`)** — `Baixa` · Fase D · 🛠️ · 🟡 Em correção (branch `fix/fidelidade-dados`) · Em produção: ⏳
+**ISS-034 · Perfil: versão do app é literal "0.1.0" (não lê `expo-constants`)** — `Baixa` · Fase D · 🛠️ · 🟢 Corrigido (`a85e02a`, `main`) · Em produção: ⏳
 - **Categoria:** hardcoded / fidelidade
-- **Evidência:** literal em `profile.tsx:100`; coincide hoje com `app.json`, mas dá drift em builds futuras.
-- **Correção (planejada):** ler a versão real do build via `expo-constants`.
+- **Evidência:** literal em `profile.tsx:100`; coincidia com `app.json`, mas daria drift em builds futuras.
+- **Correção:** versão lida do build via `Constants.expoConfig?.version` (`expo-constants`), com fallback seguro.
 - **Em produção:** ⏳ pendente de build.
 
 **ISS-036 · Alertas: rótulo de tempo ambíguo em alertas derivados** — `Baixa` · Fase C · 🛠️ · 🔴 Aberto
