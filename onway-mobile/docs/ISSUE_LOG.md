@@ -21,10 +21,14 @@
 | Severidade | Qtd | IDs |
 |---|---|---|
 | 🟥 Crítica | 5 | ISS-001 … ISS-005 |
-| 🟧 Alta | 6 | ISS-006 … ISS-011 |
-| 🟨 Média | 9 | ISS-012 … ISS-020 |
-| 🟩 Baixa | 9 | ISS-021 … ISS-029 |
-| **Total** | **29** | |
+| 🟧 Alta | 7 | ISS-006 … ISS-011, ISS-031 |
+| 🟨 Média | 12 | ISS-012 … ISS-020, ISS-032, ISS-033, ISS-035 |
+| 🟩 Baixa | 13 | ISS-021 … ISS-029, ISS-034, ISS-036, ISS-037, ISS-038 |
+| **Total** | **37** | + ISS-030 resolvida (§8) |
+
+> **Convenção de status (dois eixos):** cada issue rastreia **Correção** (código feito/mergeado) **e** **Em produção** (de fato no ar). Para correção **app-side**, "em produção" = build EAS/TestFlight publicado — hoje **⏳ pendente** (sem conta Apple, ISS-002); para **backend**, "em produção" = deploy confirmado. Princípio que guia as correções: **o app deve sempre ler o dado real do backend**, nunca fabricar/hardcodar valor exibido como dado.
+
+> **ISS-031 … ISS-038** vieram da **auditoria de fidelidade de dados (22/08)** — ver §3b. São dados exibidos em tela que não refletem o backend (campo ignorado, hardcode, encenação). Já cobertos por issues anteriores e por isso NÃO reduplicados: animação do checkup (ISS-022), toggles de notificação sem efeito (ISS-011), payback fictício (ISS-019), textos jurídicos (ISS-004), anexos sem download (ISS-021/023).
 
 **Diagnóstico:** o caminho crítico **não são as telas** — a fundação técnica está pronta. O que trava o piloto é **input do usuário** (Apple, jurídico), **contrato de backend** (push) e **processo de loja**. As pendências puramente de código são poucas e de severidade média/baixa. **Exceção:** ISS-001 (segurança) é uma quebra de governança que exige ação imediata, independentemente das fases.
 
@@ -229,6 +233,65 @@
 - **Evidência:** `PLANO_IMPLANTACAO_V2.md` §3 A1 diz "74 testes em 5 suítes"; existem **9 suítes** (adicionadas alert/session/support/error-envelope).
 - **Depende de:** nada.
 - **Ação:** atualizar a contagem no plano (fica coerente ao fechar ISS-013).
+
+---
+
+## 3b. Fidelidade de dados — dados em tela que não refletem o backend (auditoria 22/08)
+
+Cada entrada rastreia **Correção** e **Em produção** (ver convenção no §1). Verificados pelo GP, vários contra dados reais de produção.
+
+### 🟧 Alta
+
+**ISS-031 · Status/alerta da usina lê campo inexistente (`alerta`) — `temAlerta`/`alertaMensagem` do backend são ignorados** — `Alta` · Fase C · 🛠️ · 🟡 Em correção (branch `fix/fidelidade-dados`) · Em produção: ⏳
+- **Categoria:** divergência-contrato (drift de nome de campo) / fidelidade
+- **O que o usuário vê:** selo "Online/Atenção/Offline" da usina.
+- **Evidência:** `ApiPlant` declara `alerta: boolean` (`mobile-api.ts:54`) e `plantStatus`/`toPlant` leem `plant.alerta` (`domain/client.ts:82,122`); **a produção envia `temAlerta` + `alertaMensagem`** (verificado ao vivo em /usinas) e **nenhum código lê esses campos** (grep zero). Logo o selo não reflete a flag de alerta real, e a mensagem do backend é descartada.
+- **Correção (planejada):** ler `temAlerta` (com fallback ao legado `alerta`) e expor `alertaMensagem`; verificar contra produção que o selo passa a refletir a flag real.
+- **Em produção:** ⏳ pendente de build.
+
+### 🟨 Média
+
+**ISS-032 · Perfil: pílula "Cliente ativo" é literal fixo (não vem do `/me`)** — `Média` · Fase D · 🛠️ · 🟡 Em correção (branch `fix/fidelidade-dados`) · Em produção: ⏳
+- **Categoria:** mock/hardcoded / fidelidade
+- **Evidência:** string fixa em `profile.tsx:52`; o `/me` (`ApiUser`) não tem status de conta. Sempre mostra "ativo", mesmo se a conta estiver bloqueada.
+- **Correção (planejada):** remover a pílula fabricada (sem campo real de status, o app não deve afirmar "ativo"). Segue o princípio "só exibir dado real".
+- **Em produção:** ⏳ pendente de build.
+
+**ISS-033 · Contato/Suporte hardcoded; botão WhatsApp aponta para telefone fixo** — `Média` · Fase D · 👤🛠️ · 🔴 Aberto
+- **Categoria:** mock/hardcoded / fidelidade
+- **Evidência:** `config/contact.ts:1,14` cai no literal `+556140428218` (env `EXPO_PUBLIC_ONWAY_PHONE`/`_WHATSAPP` não setadas); `whatsapp ?? phone` faz o botão abrir `wa.me/556140428218` — um fixo (DDD 61) que provavelmente não tem WhatsApp. Horário "8h–18h" também fixo (`support.tsx:82`).
+- **Depende de:** 👤 números reais (telefone + WhatsApp da OnWay) para popular via env/config.
+- **Ação:** obter os números reais; e ajustar a lógica para **não** oferecer WhatsApp quando não há número de WhatsApp real (evitar conversa que não abre).
+- **Em produção:** ⏳ pendente (precisa do dado do usuário).
+
+**ISS-035 · Checkup: score /100 aparenta diagnóstico completo, cobre só 2 dimensões** — `Média` · Fase E · 🛠️ · 🔴 Aberto
+- **Categoria:** derivado-que-engana / fidelidade
+- **Evidência:** `checkup.ts:46-51,116-132` — score = 100 − penalidades de 2 checagens (comunicação + geração×prognóstico). Usina **sem prognóstico** (`status:info`, penalidade 0) + leitura recente ⇒ **100/100 "Sistema saudável"** sem a geração ter sido avaliada. A animação de "scanning" é encenação (cálculo já pronto) — ver ISS-022.
+- **Ação:** rebaixar a linguagem (não sugerir diagnóstico completo) ou refletir no score que dimensões não foram avaliadas; decisão de produto.
+- **Em produção:** n/a até decidir.
+
+### 🟩 Baixa
+
+**ISS-034 · Perfil: versão do app é literal "0.1.0" (não lê `expo-constants`)** — `Baixa` · Fase D · 🛠️ · 🟡 Em correção (branch `fix/fidelidade-dados`) · Em produção: ⏳
+- **Categoria:** hardcoded / fidelidade
+- **Evidência:** literal em `profile.tsx:100`; coincide hoje com `app.json`, mas dá drift em builds futuras.
+- **Correção (planejada):** ler a versão real do build via `expo-constants`.
+- **Em produção:** ⏳ pendente de build.
+
+**ISS-036 · Alertas: rótulo de tempo ambíguo em alertas derivados** — `Baixa` · Fase C · 🛠️ · 🔴 Aberto
+- **Categoria:** derivado-que-engana
+- **Evidência:** `alerts.tsx:86` mostra "há Xh" de `api.abertoEm`; para `origem:'derivado'`, `abertoEm` é a **última geração**, não a abertura (`mobile-api.ts:610`, contrato `INTEGRACAO_BACKEND.md:347`). "há 5h" lê como "aberto há 5h" quando é "última geração há 5h".
+- **Ação:** distinguir na UI (ex.: "última leitura há Xh" para derivados) ou pedir ao backend um timestamp de abertura real.
+
+**ISS-037 · "% da previsão" tem viés levemente otimista** — `Baixa` (informativo) · Fase C · 🛠️ · 🔴 Aberto
+- **Categoria:** derivado (documentado)
+- **Evidência:** `client.ts:246-257` — numerador `geracaoMesKwh` (mês-até-hoje, inclui hoje) sobre denominador `expectativaMesAteHojeKwh` (até ontem). Descompasso intencional/documentado, mas infla o % no começo do mês (pode passar de 100%).
+- **Ação:** aceitar (é honesto e explicado) ou alinhar as janelas com o backend. Baixa prioridade.
+
+**ISS-038 · Timeline do chamado: todos os marcos em verde/check** — `Baixa` · Fase B · 🛠️ · 🔴 Aberto
+- **Categoria:** derivado (decoração local)
+- **Evidência:** `tickets/[id].tsx:126-142` pinta todo evento como concluído; título/data são reais (backend), mas o backend não manda status por evento. Sugere "etapa aprovada" onde é só "etapa registrada".
+- **Ação:** neutralizar o estilo (não afirmar "concluído") ou pedir status por evento ao backend.
 
 ---
 
