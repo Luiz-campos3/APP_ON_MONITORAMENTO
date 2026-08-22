@@ -1,7 +1,10 @@
 # Documentação — OnWay Mobile
 
+> 📌 **Pendências centralizadas:** [ISSUE_LOG.md](ISSUE_LOG.md) é a **fonte única de pendências** da fase de refinamento — 29 issues por severidade, dono e caminho crítico. Consulte-o primeiro para saber "o que falta e quem resolve".
+
 | Documento | Conteúdo |
 |---|---|
+| [ISSUE_LOG.md](ISSUE_LOG.md) | **Fonte única de pendências** (rotinas/telas/processos): registro de issues por severidade, inputs externos, branches staged e caminho crítico do piloto |
 | [PLANO_DESENVOLVIMENTO_MOBILE_ONWAY.md](PLANO_DESENVOLVIMENTO_MOBILE_ONWAY.md) | Plano macro do produto: análise do sistema existente, escopo dos apps Cliente e Técnico, requisitos da API mobile e fases 0–9 |
 | [PLANO_IMPLANTACAO_V2.md](PLANO_IMPLANTACAO_V2.md) | **Plano vigente**: o que está em aberto pós-migração para a API pública — fases A–E, inputs bloqueantes e riscos (Revisão 1 em 19/08/2026) |
 | [EXECUCAO_FASE_A.md](EXECUCAO_FASE_A.md) | **Registro de execução da Fase A**: log por item, considerações, desvios documentados e bloqueios |
