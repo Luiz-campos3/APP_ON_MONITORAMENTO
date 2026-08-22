@@ -30,6 +30,8 @@
 
 **Distribuição por dono do gargalo:** 👤 usuário domina o caminho crítico (I4, I5, I6, I8, I10 + validações no aparelho). 🖥️ backend deve o deploy do #42 e o contrato de push. 🛠️ dev tem itens de qualidade/merge, todos destravados.
 
+**Encontradas e resolvidas fora das auditorias:** 1 — **ISS-030** (bug do histórico no modo Ano, ver §8 Resolvidas). Não conta no total de 29 (abertas).
+
 ---
 
 ## 2. 🚨 Ação de segurança imediata — ISS-001
@@ -283,3 +285,17 @@ ISS-004 (I4 · jurídico) ─────────> privacidade/termos/exclus
 - **Novo achado** entra com o próximo `ISS-0NN`, severidade e dono.
 - **A cada execução de fase**, reconcilie com os `EXECUCAO_FASE_*.md` e atualize o status aqui — este é o índice mestre; os planos guardam o detalhe do "porquê".
 - Governança inalterada: só iniciar fase se autorizado; credenciais só no `.env`; mudança do planejado é documentada.
+
+---
+
+## 8. Resolvidas
+
+Itens já resolvidos, mantidos para rastreabilidade (não apagar).
+
+**ISS-030 · Histórico de geração no modo Ano não trocava os dados ao mudar de ano** — `Alta` · Fase C · 🛠️ · 🟢 Resolvido (branch `fix/historico-ano`, aguarda validação visual + merge)
+- **Categoria:** bug (reportado em uso; fora do escopo das auditorias técnica/processos)
+- **Sintoma:** ao mudar o ano no gráfico de histórico, o rótulo mudava mas as barras permaneciam as mesmas — como se não buscasse os dados do ano selecionado.
+- **Causa raiz:** `toGenerationHistory` (`domain/client.ts`) priorizava a série `historico.ano` — que é a **visão default do ano corrente e ignora o range** `inicio/fim` — sobre a série `historico.custom`, que carrega o ano realmente pedido. **Validado em produção:** `ano` idêntico para 2024/2025/2026 (soma 81601, labels "jan/26…"); o dado específico vinha em `custom` (2026 = 234 dias reais; 2025/2024 = zerados, usina sem geração).
+- **Correção:** no modo Ano com range ativo, agrega `custom` em 12 totais mensais reais (`monthlyFromDaily`); `ano` vira apenas fallback. Anos sem geração passam a exibir vazio/tracejado (honesto) em vez de repetir o ano corrente. Commit `b80edf0`.
+- **Qualidade:** `tsc` limpo, `eslint --max-warnings 0` limpo, **123 testes** verdes (+2 novos: precedência `custom`>`ano` e regressão do sintoma).
+- **Pendente para fechar de vez:** teste visual no aparelho (👤) → merge de `fix/historico-ano` na `main`.
