@@ -90,7 +90,7 @@ export default function HomeScreen() {
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor={colors.accent} />}>
       <AppHeader />
       <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>VISÃO GERAL</Text>
-      <Text style={[styles.greeting, { color: colors.text }]}>Olá, {firstName}</Text>
+      <Text accessibilityRole="header" style={[styles.greeting, { color: colors.text }]}>Olá, {firstName}</Text>
 
       <View style={styles.selectorWrap}>
         <Text style={[styles.label, { color: colors.textSecondary }]}>Usina selecionada</Text>
@@ -113,6 +113,8 @@ export default function HomeScreen() {
             {plants.map((item) => (
               <Pressable
                 key={item.id}
+                accessibilityRole="button"
+                accessibilityState={{ selected: item.id === plant.id }}
                 onPress={() => { setSelectedId(item.id); setPickerOpen(false); }}
                 style={[styles.pickerItem, item.id === plant.id && { backgroundColor: colors.accentSoft }]}>
                 <Text style={[styles.pickerText, { color: colors.text }]}>{item.name}</Text>
@@ -162,7 +164,7 @@ export default function HomeScreen() {
             <Text style={styles.statusMetricLabel}>Potência instalada</Text>
             <Text style={styles.statusMetricValue}>{plant.powerKwp.toLocaleString('pt-BR')} kWp</Text>
           </View>
-          <Pressable onPress={() => router.push(`/plant/${plant.id}`)} style={styles.detailButton}>
+          <Pressable accessibilityRole="button" accessible onPress={() => router.push(`/plant/${plant.id}`)} style={styles.detailButton}>
             <Text style={styles.detailButtonText}>Ver detalhes</Text>
             <SymbolIcon ios="chevron.right" android="chevron_right" color={brand.white} size={15} fallback="›" />
           </Pressable>
@@ -196,7 +198,7 @@ export default function HomeScreen() {
             <Text style={[styles.cardTitle, { color: colors.text }]}>Geração nos últimos 7 dias</Text>
             <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>{history.data ? `Total de ${history.data.total.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kWh` : 'Consultando histórico'}</Text>
           </View>
-          <Pressable onPress={() => router.push(`/plant/${plant.id}`)} hitSlop={10}>
+          <Pressable accessibilityRole="button" onPress={() => router.push(`/plant/${plant.id}`)} hitSlop={10}>
             <Text style={[styles.link, { color: colors.accent }]}>Detalhes</Text>
           </Pressable>
         </View>
@@ -237,7 +239,7 @@ type QuickActionProps = { label: string; ios: Parameters<typeof SymbolIcon>[0]['
 function QuickAction({ label, ios, android, fallback, onPress }: QuickActionProps) {
   const { colors } = useOnWayTheme();
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.quickAction, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 }]}>
+    <Pressable accessibilityRole="button" accessible onPress={onPress} style={({ pressed }) => [styles.quickAction, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 }]}>
       <View style={[styles.quickIcon, { backgroundColor: colors.accentSoft }]}>
         <SymbolIcon ios={ios} android={android} fallback={fallback} color={colors.accent} size={21} />
       </View>

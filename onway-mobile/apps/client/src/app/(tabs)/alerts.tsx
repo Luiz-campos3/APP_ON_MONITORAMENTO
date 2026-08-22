@@ -52,9 +52,9 @@ export default function AlertsScreen() {
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor={colors.accent} />}>
       <AppHeader />
       <View style={styles.titleRow}>
-        <Text style={[styles.title, { color: colors.text }]}>Alertas</Text>
+        <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>Alertas</Text>
         {unread > 0 ? (
-          <Pressable onPress={() => markAllRead().catch(() => undefined)} hitSlop={8}>
+          <Pressable accessibilityRole="button" onPress={() => markAllRead().catch(() => undefined)} hitSlop={8}>
             <Text style={[styles.markAll, { color: colors.accent }]}>Marcar todas como lidas</Text>
           </Pressable>
         ) : null}
@@ -71,7 +71,7 @@ export default function AlertsScreen() {
             const color = alert.tone === 'danger' ? brand.danger : brand.warning;
 
             return (
-              <Pressable key={alert.id} onPress={() => openAlert(alert.id, alert.plantId)}>
+              <Pressable key={alert.id} accessibilityRole="button" accessible onPress={() => openAlert(alert.id, alert.plantId)}>
                 {({ pressed }) => (
                   <Card style={[styles.alertCard, pressed && styles.pressed]}>
                     <View style={[styles.icon, { backgroundColor: `${color}22` }]}>

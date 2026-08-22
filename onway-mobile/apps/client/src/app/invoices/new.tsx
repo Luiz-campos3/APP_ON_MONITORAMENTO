@@ -149,6 +149,9 @@ export default function NewInvoiceScreen() {
               return (
                 <Pressable
                   key={item.id}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  accessible
                   onPress={() => setPlantId(item.id)}
                   style={[styles.plantRow, index < plants.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
                   <Text style={[styles.plantName, { color: colors.text }]}>{item.name}</Text>
@@ -200,6 +203,8 @@ export default function NewInvoiceScreen() {
           return (
             <Pressable
               key={option.value}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
               onPress={() => setMesAno(option.value)}
               style={[styles.monthChip, { backgroundColor: active ? colors.accent : colors.surfaceMuted, borderColor: active ? colors.accent : colors.border }]}>
               <Text style={[styles.monthText, { color: active ? brand.white : colors.text }]}>{option.label}</Text>

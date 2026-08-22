@@ -44,7 +44,7 @@ export default function ProfileScreen() {
   return (
     <Screen>
       <AppHeader />
-      <Text style={[styles.title, { color: colors.text }]}>Meu perfil</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>Meu perfil</Text>
       <Card style={styles.profileCard}>
         <View style={[styles.avatar, { backgroundColor: colors.accentSoft }]}>
           <Text style={[styles.avatarText, { color: colors.accent }]}>{initials}</Text>
@@ -56,7 +56,7 @@ export default function ProfileScreen() {
       </Card>
 
       {user?.mustChangePassword ? (
-        <Pressable onPress={() => router.push('/settings/change-password')} style={({ pressed }) => pressed && { opacity: 0.7 }}>
+        <Pressable accessibilityRole="button" accessible onPress={() => router.push('/settings/change-password')} style={({ pressed }) => pressed && { opacity: 0.7 }}>
           <Card style={styles.passwordWarning}>
             <SymbolIcon ios="key.fill" android="key" color={brand.warning} size={21} fallback="!" />
             <View style={styles.warningBody}>
@@ -78,6 +78,8 @@ export default function ProfileScreen() {
             return (
               <Pressable
                 key={option.value}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
                 onPress={() => setPreference(option.value)}
                 style={[styles.segment, active && { backgroundColor: colors.surface }]}>
                 <Text style={[styles.segmentText, { color: active ? colors.accent : colors.textSecondary }]}>{option.label}</Text>
@@ -107,7 +109,7 @@ export default function ProfileScreen() {
 function MenuItem({ label, ios, android, onPress, last = false }: { label: string; ios: Parameters<typeof SymbolIcon>[0]['ios']; android: string; onPress: () => void; last?: boolean }) {
   const { colors } = useOnWayTheme();
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.menuItem, !last && { borderBottomColor: colors.border, borderBottomWidth: 1 }, pressed && { opacity: 0.62 }]}>
+    <Pressable accessibilityRole="button" accessible onPress={onPress} style={({ pressed }) => [styles.menuItem, !last && { borderBottomColor: colors.border, borderBottomWidth: 1 }, pressed && { opacity: 0.62 }]}>
       <View style={[styles.menuIcon, { backgroundColor: colors.surfaceMuted }]}><SymbolIcon ios={ios} android={android} color={colors.textSecondary} size={19} fallback="•" /></View>
       <Text style={[styles.menuText, { color: colors.text }]}>{label}</Text>
       <SymbolIcon ios="chevron.right" android="chevron_right" color={colors.textSecondary} size={17} fallback="›" />

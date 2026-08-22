@@ -14,7 +14,7 @@ export function SettingsHeader({ title }: { title: string }) {
       <Pressable accessibilityRole="button" accessibilityLabel="Voltar" onPress={() => router.back()} style={[styles.button, { backgroundColor: colors.surface }]}>
         <SymbolIcon ios="chevron.left" android="arrow_back" color={colors.text} size={20} fallback="‹" />
       </Pressable>
-      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>{title}</Text>
       <View style={styles.button} />
     </View>
   );

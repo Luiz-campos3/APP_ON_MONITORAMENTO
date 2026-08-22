@@ -98,6 +98,7 @@ export function Field({ label, error, right, style, ...inputProps }: FieldProps)
           },
         ]}>
         <TextInput
+          accessibilityLabel={label}
           {...inputProps}
           placeholderTextColor={colors.textSecondary}
           selectionColor={brand.green}

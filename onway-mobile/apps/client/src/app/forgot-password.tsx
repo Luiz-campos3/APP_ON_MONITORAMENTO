@@ -32,7 +32,7 @@ export default function ForgotPasswordScreen() {
   return (
     <Screen contentStyle={styles.screen}>
       <View style={styles.header}>
-        <Pressable accessibilityLabel="Voltar" onPress={() => router.back()} style={styles.back}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Voltar" onPress={() => router.back()} style={styles.back}>
           <SymbolIcon ios="chevron.left" android="arrow_back" color={colors.text} size={22} fallback="‹" />
         </Pressable>
         <BrandLogo size={38} layout="horizontal" />
@@ -40,7 +40,7 @@ export default function ForgotPasswordScreen() {
       </View>
 
       <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.text }]}>Recuperar acesso</Text>
+        <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>Recuperar acesso</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Por segurança, a redefinição de senha é feita pela equipe OnWay. Fale com a gente por um dos
           canais abaixo e enviaremos uma senha temporária para você trocar no primeiro acesso.

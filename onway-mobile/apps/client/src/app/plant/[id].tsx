@@ -70,7 +70,7 @@ export default function PlantDetailScreen() {
   return (
     <Screen scrollEnabled={!historyDragging}>
       <View style={styles.header}>
-        <Pressable accessibilityLabel="Voltar" onPress={() => router.back()} style={[styles.headerButton, { backgroundColor: colors.surface }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Voltar" onPress={() => router.back()} style={[styles.headerButton, { backgroundColor: colors.surface }]}>
           <SymbolIcon ios="chevron.left" android="arrow_back" color={colors.text} size={21} fallback="‹" />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Detalhes da usina</Text>
@@ -78,7 +78,7 @@ export default function PlantDetailScreen() {
         <View style={styles.headerButton} />
       </View>
 
-      <Text style={[styles.title, { color: colors.text }]}>{plant.name}</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>{plant.name}</Text>
       <Text style={[styles.location, { color: colors.textSecondary }]}>{plant.city}</Text>
 
       <LinearGradient colors={[brand.green, brand.greenDark]} style={styles.hero}>
@@ -201,7 +201,7 @@ function InvoicesSection({ plantId, summary, loading, error }: { plantId: string
     <>
       <View style={styles.invoicesHeader}>
         <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 0, marginBottom: 0 }]}>Faturas</Text>
-        <Pressable onPress={() => router.push(`/invoices/new?plantId=${plantId}`)} style={({ pressed }) => [styles.addInvoice, { backgroundColor: colors.accentSoft }, pressed && { opacity: 0.7 }]}>
+        <Pressable accessibilityRole="button" accessible onPress={() => router.push(`/invoices/new?plantId=${plantId}`)} style={({ pressed }) => [styles.addInvoice, { backgroundColor: colors.accentSoft }, pressed && { opacity: 0.7 }]}>
           <SymbolIcon ios="plus" android="add" color={colors.accent} size={15} fallback="+" />
           <Text style={[styles.addInvoiceText, { color: colors.accent }]}>Adicionar</Text>
         </Pressable>
@@ -262,7 +262,7 @@ function InvoicesSection({ plantId, summary, loading, error }: { plantId: string
 function InfoRow({ label, value, ios, android, last = false }: { label: string; value: string; ios: Parameters<typeof SymbolIcon>[0]['ios']; android: string; last?: boolean }) {
   const { colors } = useOnWayTheme();
   return (
-    <View style={[styles.infoRow, !last && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+    <View accessible style={[styles.infoRow, !last && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
       <View style={[styles.infoIcon, { backgroundColor: colors.surfaceMuted }]}><SymbolIcon ios={ios} android={android} color={colors.textSecondary} size={18} fallback="•" /></View>
       <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{label}</Text>
       <Text style={[styles.infoValue, { color: colors.text }]}>{value}</Text>

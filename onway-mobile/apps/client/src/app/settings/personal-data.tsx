@@ -14,7 +14,7 @@ export default function PersonalDataScreen() {
   return (
     <Screen>
       <SettingsHeader title="Meus dados" />
-      <Text style={[styles.title, { color: colors.text }]}>Informações pessoais</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>Informações pessoais</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Dados retornados pela sua conta OnWay.</Text>
       <Card style={styles.form}>
         <Field label="Nome completo" value={user?.nome || ''} editable={false} />

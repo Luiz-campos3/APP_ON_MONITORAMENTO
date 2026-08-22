@@ -91,7 +91,7 @@ export default function SessionsScreen() {
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={colors.accent} />}>
       <SettingsHeader title="Dispositivos e sessões" />
-      <Text style={[styles.title, { color: colors.text }]}>Onde sua conta está conectada</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>Onde sua conta está conectada</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Encerre acessos que você não reconhece.</Text>
 
       {loading && sessions.length === 0 ? (
@@ -125,7 +125,7 @@ export default function SessionsScreen() {
                   {session.isCurrent ? (
                     <Text style={[styles.current, { color: colors.accent }]}>ESTE APARELHO</Text>
                   ) : (
-                    <Pressable disabled={busy !== null} onPress={() => confirmRevoke(session)} hitSlop={8} style={styles.revoke}>
+                    <Pressable accessibilityRole="button" disabled={busy !== null} onPress={() => confirmRevoke(session)} hitSlop={8} style={styles.revoke}>
                       {busy === session.familyId ? (
                         <ActivityIndicator color={brand.danger} size="small" />
                       ) : (

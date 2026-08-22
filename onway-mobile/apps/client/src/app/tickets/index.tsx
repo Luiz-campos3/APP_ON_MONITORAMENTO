@@ -42,7 +42,7 @@ export default function TicketsScreen() {
         <View style={[styles.notice, { backgroundColor: colors.surfaceMuted }]}>
           <SymbolIcon ios="info.circle.fill" android="info" color={colors.accent} size={17} fallback="i" />
           <Text style={[styles.noticeText, { color: colors.text }]}>Os chamados de demonstração foram descartados. Os chamados abertos agora vão direto para a OnWay.</Text>
-          <Pressable accessibilityLabel="Dispensar aviso" onPress={dismissMigrationNotice} hitSlop={10}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Dispensar aviso" onPress={dismissMigrationNotice} hitSlop={10}>
             <SymbolIcon ios="xmark" android="close" color={colors.textSecondary} size={15} fallback="✕" />
           </Pressable>
         </View>
@@ -92,7 +92,7 @@ function TicketRow({ ticket, tint, onPress }: { ticket: SupportTicket; tint: str
   const attention = ticketNeedsAttention(ticket);
   const title = ticket.categoria || 'Chamado';
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [pressed && { opacity: 0.7 }]}>
+    <Pressable accessibilityRole="button" accessible onPress={onPress} style={({ pressed }) => [pressed && { opacity: 0.7 }]}>
       <Card style={styles.ticketCard}>
         <View style={[styles.ticketIcon, { backgroundColor: colors.surfaceMuted }]}>
           <SymbolIcon ios="wrench.and.screwdriver.fill" android="build" color={colors.accent} size={20} fallback="•" />
