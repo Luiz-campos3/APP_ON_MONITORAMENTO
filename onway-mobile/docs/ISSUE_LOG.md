@@ -28,7 +28,7 @@
 
 > **Convenção de status (dois eixos):** cada issue rastreia **Correção** (código feito/mergeado) **e** **Em produção** (de fato no ar). Para correção **app-side**, "em produção" = build EAS/TestFlight publicado — hoje **⏳ pendente** (sem conta Apple, ISS-002); para **backend**, "em produção" = deploy confirmado. Princípio que guia as correções: **o app deve sempre ler o dado real do backend**, nunca fabricar/hardcodar valor exibido como dado.
 
-> **ISS-031 … ISS-038** vieram da **auditoria de fidelidade de dados (22/08)** — ver §3b. São dados exibidos em tela que não refletem o backend (campo ignorado, hardcode, encenação). Já cobertos por issues anteriores e por isso NÃO reduplicados: animação do checkup (ISS-022), toggles de notificação sem efeito (ISS-011), payback fictício (ISS-019), textos jurídicos (ISS-004), anexos sem download (ISS-021/023).
+> **ISS-031 … ISS-038** vieram da **auditoria de fidelidade de dados (22/08)** — ver §3b. **✅ Todas as 8 resolvidas** (6 corrigidas no código + ISS-033 não-era-defeito + ISS-037 aceito); "em produção" pendente de build (ISS-002). Já cobertos por issues anteriores e por isso NÃO reduplicados: animação do checkup (ISS-022), toggles de notificação sem efeito (ISS-011), payback fictício (ISS-019), textos jurídicos (ISS-004), anexos sem download (ISS-021/023).
 
 **Diagnóstico:** o caminho crítico **não são as telas** — a fundação técnica está pronta. O que trava o piloto é **input do usuário** (Apple, jurídico), **contrato de backend** (push) e **processo de loja**. As pendências puramente de código são poucas e de severidade média/baixa. **Exceção:** ISS-001 (segurança) é uma quebra de governança que exige ação imediata, independentemente das fases.
 
@@ -264,11 +264,12 @@ Cada entrada rastreia **Correção** e **Em produção** (ver convenção no §1
 - **Resolução (confirmado com o cliente 22/08):** o telefone é o **oficial**, o **WhatsApp é o mesmo número** (o botão abre conversa de verdade — o `?? phone` cai no número certo, é intencional), e o horário está **correto**. Não é dado fabricado — é a config pública real. Sem mudança de comportamento; adicionado comentário em `contact.ts` para não ser "corrigido" por engano nem re-sinalizado.
 - **Em produção:** ⏳ pendente de build (o comentário entra no próximo build).
 
-**ISS-035 · Checkup: score /100 aparenta diagnóstico completo, cobre só 2 dimensões** — `Média` · Fase E · 🛠️ · 🔴 Aberto
+**ISS-035 · Checkup: score /100 aparenta diagnóstico completo, cobre só 2 dimensões** — `Média` · Fase E · 🛠️ · 🟢 Corrigido (`5ecd579`, `main`) · Em produção: ⏳
 - **Categoria:** derivado-que-engana / fidelidade
-- **Evidência:** `checkup.ts:46-51,116-132` — score = 100 − penalidades de 2 checagens (comunicação + geração×prognóstico). Usina **sem prognóstico** (`status:info`, penalidade 0) + leitura recente ⇒ **100/100 "Sistema saudável"** sem a geração ter sido avaliada. A animação de "scanning" é encenação (cálculo já pronto) — ver ISS-022.
-- **Ação:** rebaixar a linguagem (não sugerir diagnóstico completo) ou refletir no score que dimensões não foram avaliadas; decisão de produto.
-- **Em produção:** n/a até decidir.
+- **Evidência:** `checkup.ts` — score = 100 − penalidades de 2 checagens. Usina **sem prognóstico** (`status:info`, penalidade 0) + leitura recente ⇒ **100/100 "Sistema saudável"** sem a geração ter sido avaliada.
+- **Correção (decisão do cliente: C — suavizar + refletir no score):** `CheckupReport` expõe `assessed`/`total`/`incomplete`; headline suavizada ("Tudo certo nas verificações" / "Verificação parcial"); quando parcial o anel fica **neutro** e mostra a **cobertura `assessed/total`** (não "100/100"), com "N verificação(ões) sem dados suficientes". +2 testes.
+- **Follow-up separado:** a animação de "scanning" (encenação) segue em **ISS-022**; o presente fix não a toca.
+- **Em produção:** ⏳ pendente de build.
 
 ### 🟩 Baixa
 
@@ -284,10 +285,10 @@ Cada entrada rastreia **Correção** e **Em produção** (ver convenção no §1
 - **Correção:** `timeLabel` (em `domain/alert.ts`) virou origin-aware — `derivado` → "última leitura há Xh"; `tabela` → "há Xh". +3 testes. `alerts.tsx` inalterado (só renderiza o label). Sem afirmar "aberto há Xh" onde não é.
 - **Em produção:** ⏳ pendente de build.
 
-**ISS-037 · "% da previsão" tem viés levemente otimista** — `Baixa` (informativo) · Fase C · 🛠️ · 🔴 Aberto
+**ISS-037 · "% da previsão" tem viés levemente otimista** — `Baixa` (informativo) · Fase C · 🛠️ · 🟢 Resolvido — **Aceito** (decisão do cliente 22/08)
 - **Categoria:** derivado (documentado)
-- **Evidência:** `client.ts:246-257` — numerador `geracaoMesKwh` (mês-até-hoje, inclui hoje) sobre denominador `expectativaMesAteHojeKwh` (até ontem). Descompasso intencional/documentado, mas infla o % no começo do mês (pode passar de 100%).
-- **Ação:** aceitar (é honesto e explicado) ou alinhar as janelas com o backend. Baixa prioridade.
+- **Evidência:** `client.ts:246-257` — numerador `geracaoMesKwh` (mês-até-hoje, inclui hoje) sobre denominador `expectativaMesAteHojeKwh` (até ontem). Descompasso **intencional** e já documentado no código (comentário em `domain/client.ts` sobre a janela terminar ontem de propósito).
+- **Resolução:** aceito como está — o % é honesto e o descasamento é deliberado (comparar mês-até-hoje com a meta do mês cheio faria toda usina parecer ruim no começo do mês). Sem mudança de código.
 
 **ISS-038 · Timeline do chamado: todos os marcos em verde/check** — `Baixa` · Fase B · 🛠️ · 🟢 Corrigido (`24cbdc2`, `main`) · Em produção: ⏳
 - **Categoria:** derivado (decoração local)
