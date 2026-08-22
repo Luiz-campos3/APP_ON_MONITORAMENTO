@@ -1,6 +1,6 @@
 import type { ApiPlant, PlantHistoryResponse } from '@/services/mobile-api';
 
-export type PlantStatus = 'online' | 'attention' | 'offline';
+export type PlantStatus = 'online' | 'attention' | 'critical' | 'offline';
 
 /**
  * Origem da expectativa de geração (issue #36 / PR #40). `historico` = derivada
@@ -78,15 +78,22 @@ function plantStatus(plant: ApiPlant): PlantStatus {
     || status.includes('sem dado')
   ) return 'offline';
 
-  const flagged = plant.temAlerta ?? plant.alerta ?? false;
+  if (
+    status === 'error'
+    || status.includes('erro')
+    || status.includes('falha')
+    || status.includes('critic')
+  ) return 'critical';
 
   if (
-    flagged
+    status === 'warning'
+    || status.includes('warn')
     || status.includes('alert')
     || status.includes('atenc')
-    || status.includes('falha')
-    || status.includes('erro')
   ) return 'attention';
+
+  const flagged = plant.temAlerta ?? plant.alerta ?? false;
+  if (flagged) return 'attention'; // temAlerta true sem severidade reconhecível → atenção conservadora
 
   return 'online';
 }
@@ -272,5 +279,6 @@ export function forecastSummary(plant: Plant) {
 export function statusLabel(status: PlantStatus) {
   if (status === 'online') return 'Online';
   if (status === 'attention') return 'Atenção';
+  if (status === 'critical') return 'Crítico';
   return 'Offline';
 }

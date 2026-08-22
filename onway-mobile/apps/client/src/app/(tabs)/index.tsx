@@ -80,7 +80,11 @@ export default function HomeScreen() {
   }
 
   const statusText = statusLabel(plant.status);
-  const statusColor = plant.status === 'online' ? '#63E5B4' : plant.status === 'attention' ? brand.warning : brand.danger;
+  const statusColor =
+    plant.status === 'online' ? '#63E5B4'
+    : plant.status === 'attention' ? brand.warning
+    : plant.status === 'critical' ? brand.danger
+    : colors.textSecondary;
   const generationToday = todayHistory.data?.total ?? plant.generationToday;
   const generationTodaySource = todayHistory.data ? 'Histórico de hoje' : 'Leitura da API';
   // Oculto até o backend expor investimento/tarifa reais (I5) — flag em config/features.
@@ -134,7 +138,7 @@ export default function HomeScreen() {
           </View>
           <SymbolIcon ios="sun.max.fill" android="sunny" color="#D9FFF0" size={25} fallback="☀" />
         </View>
-        <Text style={styles.statusTitle}>{plant.status === 'online' ? 'Tudo funcionando' : plant.status === 'attention' ? 'Requer atenção' : 'Sem comunicação'}</Text>
+        <Text style={styles.statusTitle}>{plant.status === 'online' ? 'Tudo funcionando' : plant.status === 'attention' ? 'Requer atenção' : plant.status === 'critical' ? 'Falha crítica' : 'Sem monitoramento'}</Text>
         <Text style={styles.statusSubtitle}>Última atualização {plant.updatedAtLabel}</Text>
 
         {payback ? (

@@ -92,12 +92,20 @@ describe('toPlant', () => {
     expect(toPlant(apiPlant({ status })).status).toBe('offline');
   });
 
-  it.each(['Atenção', 'Falha no inversor', 'erro'])('mapeia status "%s" para attention', (status) => {
+  it.each(['Atenção', 'Alerta ativo', 'warning'])('mapeia status "%s" para attention', (status) => {
     expect(toPlant(apiPlant({ status })).status).toBe('attention');
+  });
+
+  it.each(['error', 'Falha no inversor', 'erro'])('mapeia status "%s" para critical', (status) => {
+    expect(toPlant(apiPlant({ status })).status).toBe('critical');
   });
 
   it('mapeia flag temAlerta para attention mesmo com status normal', () => {
     expect(toPlant(apiPlant({ temAlerta: true })).status).toBe('attention');
+  });
+
+  it('edge: temAlerta true sem severidade reconhecível cai em attention conservador', () => {
+    expect(toPlant(apiPlant({ temAlerta: true, status: 'ok' })).status).toBe('attention');
   });
 
   it('fallback legado: sem temAlerta, usa alerta=true para attention', () => {
@@ -270,9 +278,10 @@ describe('formatLastReading', () => {
 });
 
 describe('statusLabel', () => {
-  it('traduz os três status', () => {
+  it('traduz os quatro status', () => {
     expect(statusLabel('online')).toBe('Online');
     expect(statusLabel('attention')).toBe('Atenção');
+    expect(statusLabel('critical')).toBe('Crítico');
     expect(statusLabel('offline')).toBe('Offline');
   });
 });

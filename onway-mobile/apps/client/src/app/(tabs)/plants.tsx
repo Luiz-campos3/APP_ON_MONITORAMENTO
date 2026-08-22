@@ -13,6 +13,9 @@ import type { PlantStatus } from '@/domain/client';
 const statusConfig: Record<PlantStatus, { label: string; color: string }> = {
   online: { label: 'Online', color: brand.green },
   attention: { label: 'Atenção', color: brand.warning },
+  critical: { label: 'Crítico', color: brand.danger },
+  // offline usa um neutro tema-aware (colors.textSecondary) resolvido no componente;
+  // o valor aqui é sempre sobrescrito (ver statusColor no map abaixo).
   offline: { label: 'Offline', color: brand.danger },
 };
 
@@ -62,6 +65,8 @@ export default function PlantsScreen() {
       <View style={styles.list}>
         {plants.map((plant) => {
           const status = statusConfig[plant.status];
+          // offline usa o neutro tema-aware; os demais mantêm as cores da paleta brand.
+          const statusColor = plant.status === 'offline' ? colors.textSecondary : status.color;
           return (
             <Pressable key={plant.id} accessibilityRole="button" accessible onPress={() => router.push(`/plant/${plant.id}`)}>
               {({ pressed }) => (
@@ -72,9 +77,9 @@ export default function PlantsScreen() {
                   <View style={styles.body}>
                     <View style={styles.nameRow}>
                       <Text style={[styles.name, { color: colors.text }]}>{plant.name}</Text>
-                      <View style={[styles.status, { backgroundColor: `${status.color}20` }]}>
-                        <View style={[styles.dot, { backgroundColor: status.color }]} />
-                        <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
+                      <View style={[styles.status, { backgroundColor: `${statusColor}20` }]}>
+                        <View style={[styles.dot, { backgroundColor: statusColor }]} />
+                        <Text style={[styles.statusText, { color: statusColor }]}>{status.label}</Text>
                       </View>
                     </View>
                     <Text style={[styles.location, { color: colors.textSecondary }]}>{plant.city} · {plant.manufacturer}</Text>

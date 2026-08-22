@@ -519,7 +519,9 @@ const usinas = await getUsinas();    // 4 usinas
    `quantidadeUsinas: 4` no dashboard, detalhe e histórico OK.
 4. Tentar abrir uma usina de outro cliente (UUID aleatório) → deve dar `404`.
 5. Errar a senha várias vezes → `429 "Muitas tentativas de login, aguarde."`
-   com `Retry-After ~30s` (rate limit por IP; **não** há lockout por conta).
+   com `Retry-After ~30s` (rate limit **por IP**). Há **também** lockout **por conta**
+   (chave = e-mail, 5 falhas/15min — ver §2), independente do IP. ⚠️ evitar em
+   demonstrações com vários aparelhos: cada falha conta e pode travar a conta de teste.
 6. Esperar o access token expirar (~15 min) → refresh transparente, sem voltar
    ao login.
 
