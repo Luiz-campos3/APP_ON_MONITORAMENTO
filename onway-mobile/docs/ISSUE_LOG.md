@@ -98,11 +98,11 @@
 - **Depende de:** deploy do #42 (ISS-003). A mecânica não depende do I4; só o texto fino da tela.
 - **Ação:** após o deploy, validar (senha errada→403, exclusão→200, login excluído→401, conta irmã intacta), rebasear em `main` e mergear.
 
-**ISS-008 · Testar VoiceOver e mergear `feat/acessibilidade`** — `Alta` · Fase D · 👤🛠️ · 🟡 Em validação
+**ISS-008 · Testar VoiceOver e mergear `feat/acessibilidade`** — `Alta` · Fase D · 👤🛠️ · 🟢 Mergeado (`ac6f31b`, `main`) · ⚠️ VoiceOver no aparelho ainda não feito · Em produção: ⏳
 - **Categoria:** validação
-- **Evidência:** branch `feat/acessibilidade` (`330890e`, 23 arquivos: roles/labels/headers/estados). Gate = teste no aparelho.
-- **Depende de:** 👤 rodar VoiceOver no Expo Go/aparelho.
-- **Ação:** executar o roteiro de VoiceOver; passando, rebasear e mergear.
+- **Evidência:** branch `feat/acessibilidade` (21 arquivos: roles/labels/headers/estados) mergeado na `main` (autorizado 22/08); gate verde (tsc/eslint/testes).
+- **⚠️ Ressalva:** o **teste de VoiceOver no dispositivo NÃO foi executado** (não operável por mim). Os rótulos de leitor de tela estão no código mas não validados no aparelho — **spot-check de VoiceOver recomendado antes do build/submissão** (não bloqueia enquanto ISS-002 pender).
+- **Em produção:** ⏳ pendente de build.
 
 **ISS-009 · Crash reporting sanitizado (Sentry / I10)** — `Alta` · Fase A→D · 👤🛠️ · ⛔ Bloqueado
 - **Categoria:** input-externo / instrumentação
@@ -124,11 +124,11 @@
 
 ### 🟨 Médias
 
-**ISS-012 · Branches staged colidem e estão atrás da `main`** — `Média` · Fase D · 🛠️ · 🔴 Aberto
+**ISS-012 · Branches staged colidem e estão atrás da `main`** — `Média` · Fase D · 🛠️ · 🟡 Parcial (2 de 3 mergeados)
 - **Categoria:** staged/merge
-- **Evidência:** `feat/acessibilidade` e `feat/exclusao-conta` **ambos** editam `settings/privacy.tsx` e `PLANO_IMPLANTACAO_V2.md` (conflito garantido); ambos estão behind main (2 e 1 commits).
-- **Depende de:** nada.
-- **Ação:** definir ordem de merge, rebasear os dois em `main` e resolver o conflito de `privacy.tsx` uma vez.
+- **Evidência/estado:** `fix/historico-ano` (`123b8ef`) e `feat/acessibilidade` (`ac6f31b`) **mergeados** na `main` sem conflito (auto-merge `ort` — regiões distintas das mudanças de fidelidade). Resta **`feat/exclusao-conta`**, segurado (depende do deploy do PR #42 — ISS-003/007). Ao mergear a exclusão, resolver o `privacy.tsx` (que ela também edita) uma vez.
+- **Depende de:** deploy do PR #42 (backend) para liberar o último merge.
+- **Ação:** após #42 + validação, rebasear/mergear `feat/exclusao-conta` e fechar esta issue.
 
 **ISS-013 · Cobertura de testes: cliente HTTP, contexts e strip de EXIF sem teste** — `Média` · transversal · 🛠️ · 🔴 Aberto
 - **Categoria:** teste-faltante
@@ -358,10 +358,10 @@ ISS-004 (I4 · jurídico) ─────────> privacidade/termos/exclus
 
 Itens já resolvidos, mantidos para rastreabilidade (não apagar).
 
-**ISS-030 · Histórico de geração no modo Ano não trocava os dados ao mudar de ano** — `Alta` · Fase C · 🛠️ · 🟢 Resolvido (branch `fix/historico-ano`, aguarda validação visual + merge)
+**ISS-030 · Histórico de geração no modo Ano não trocava os dados ao mudar de ano** — `Alta` · Fase C · 🛠️ · 🟢 Resolvido — **mergeado na `main`** (`123b8ef`) · Em produção: ⏳
 - **Categoria:** bug (reportado em uso; fora do escopo das auditorias técnica/processos)
 - **Sintoma:** ao mudar o ano no gráfico de histórico, o rótulo mudava mas as barras permaneciam as mesmas — como se não buscasse os dados do ano selecionado.
 - **Causa raiz:** `toGenerationHistory` (`domain/client.ts`) priorizava a série `historico.ano` — que é a **visão default do ano corrente e ignora o range** `inicio/fim` — sobre a série `historico.custom`, que carrega o ano realmente pedido. **Validado em produção:** `ano` idêntico para 2024/2025/2026 (soma 81601, labels "jan/26…"); o dado específico vinha em `custom` (2026 = 234 dias reais; 2025/2024 = zerados, usina sem geração).
 - **Correção:** no modo Ano com range ativo, agrega `custom` em 12 totais mensais reais (`monthlyFromDaily`); `ano` vira apenas fallback. Anos sem geração passam a exibir vazio/tracejado (honesto) em vez de repetir o ano corrente. Commit `b80edf0`.
 - **Qualidade:** `tsc` limpo, `eslint --max-warnings 0` limpo, **123 testes** verdes (+2 novos: precedência `custom`>`ano` e regressão do sintoma).
-- **Pendente para fechar de vez:** teste visual no aparelho (👤) → merge de `fix/historico-ano` na `main`.
+- **Mergeado na `main`** (merge `123b8ef`, 22/08) após gate verde. Teste visual no aparelho fica como conferência opcional (a correção foi validada contra dados de produção). Em produção: ⏳ pendente de build.
