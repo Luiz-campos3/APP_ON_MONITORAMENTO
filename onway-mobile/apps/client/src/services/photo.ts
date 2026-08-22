@@ -8,8 +8,23 @@ import type { UploadFile } from '@/services/mobile-api';
 // requisito de LGPD da Fase B.
 const MAX_DIMENSION = 1600;
 const JPEG_QUALITY = 0.7;
+// Limite real do backend para a foto do chamado (responde 400 acima disso).
+// Guarda defensiva pós-compressão — na prática o reencode já mantém bem abaixo.
+const TICKET_PHOTO_MAX_BYTES = 10 * 1024 * 1024;
 
 export type PhotoResult = { file: UploadFile } | { error: string } | null;
+
+// Tamanho em bytes do arquivo local, sem dependência nova (blob do próprio uri).
+// Best-effort: se não der para medir, retorna 0 e a guarda não bloqueia (o
+// servidor ainda barra com 400) — nunca impede o envio por falha de medição.
+async function fileByteSize(uri: string): Promise<number> {
+  try {
+    const blob = await (await fetch(uri)).blob();
+    return blob.size ?? 0;
+  } catch {
+    return 0;
+  }
+}
 
 async function processImage(uri: string, width?: number): Promise<UploadFile> {
   const context = ImageManipulator.manipulate(uri);
@@ -25,7 +40,12 @@ async function processImage(uri: string, width?: number): Promise<UploadFile> {
 async function fromAsset(result: ImagePicker.ImagePickerResult): Promise<PhotoResult> {
   if (result.canceled || !result.assets?.length) return null;
   const asset = result.assets[0];
-  return { file: await processImage(asset.uri, asset.width) };
+  const file = await processImage(asset.uri, asset.width);
+  const bytes = await fileByteSize(file.uri);
+  if (bytes > TICKET_PHOTO_MAX_BYTES) {
+    return { error: 'A foto ficou acima de 10 MB mesmo após a compressão. Tente outra imagem.' };
+  }
+  return { file };
 }
 
 export async function captureTicketPhoto(): Promise<PhotoResult> {

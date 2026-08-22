@@ -114,7 +114,7 @@
 - **Depende de:** OnWay confirmar no portal.
 - **Ação:** confirmar os chamados de teste no portal e encerrá-los/limpá-los.
 
-**ISS-011 · Preferências de notificação não têm efeito (copy promete filtro inexistente)** — `Alta` · Fase C · 🛠️ · 🔴 Aberto
+**ISS-011 · Preferências de notificação não têm efeito (copy promete filtro inexistente)** — `Alta` · Fase C · 🛠️ · 🟢 Corrigido (Lote 1) · Em produção: ⏳ — copy honesta: `notifications.tsx` não afirma mais que os toggles filtram o feed; deixa claro que regem o push futuro. O filtro real fica com o contrato de push (ISS-006).
 - **Categoria:** bug / divergência copy-vs-código
 - **Evidência:** `settings/notifications.tsx:10-11,44` afirma que as prefs "são aplicadas aos alertas exibidos no app"; mas `alerts-context.tsx:42` chama `getAlerts('aberto')` e exibe tudo — os toggles `plantOffline`/`lowGeneration` **não filtram nada**.
 - **Depende de:** nada (decisão de produto).
@@ -138,7 +138,7 @@
 - **Depende de:** 👤 pente-fino no aparelho + 🖥️ rearmar `mustChangePassword`.
 - **Ação:** executar o roteiro de aceite restante; rebaixar A para "parcial" ou registrar formalmente o aceite do usuário.
 
-**ISS-015 · Contradição de lockout no `INTEGRACAO_BACKEND.md` (fonte canônica do contrato)** — `Média` · Fase A/C · 🛠️ · 🔴 Aberto
+**ISS-015 · Contradição de lockout no `INTEGRACAO_BACKEND.md` (fonte canônica do contrato)** — `Média` · Fase A/C · 🛠️ · 🟢 Corrigido (Lote 1) — checklist alinhado ao contrato: existe lockout **por conta** (5 falhas/15min por e-mail) **além** do 429 por IP.
 - **Categoria:** governança/doc
 - **Evidência:** `INTEGRACAO_BACKEND.md:66` afirma **existir** lockout por conta (5 falhas/15min por e-mail); `:477` diz "**não** há lockout por conta". Contradição na referência que sustenta o app.
 - **Depende de:** nada.
@@ -194,7 +194,7 @@
 - **Depende de:** contrato de preferências (ISS-006) para o estado de notificação.
 - **Ação:** reintroduzir com sincronização real ou remover o estado morto; adicionar viewer de anexo quando priorizado.
 
-**ISS-024 · Foto do chamado sem guarda explícita de 10 MB** — `Baixa` · Fase B · 🛠️ · 🔴 Aberto
+**ISS-024 · Foto do chamado sem guarda explícita de 10 MB** — `Baixa` · Fase B · 🛠️ · 🟢 Corrigido (Lote 1) · Em produção: ⏳ — `photo.ts` afere o tamanho pós-compressão (via `blob`, sem nova dependência) e bloqueia >10 MB com erro claro; best-effort (se não medir, não bloqueia — servidor ainda barra com 400).
 - **Categoria:** bug-potencial (defensivo)
 - **Evidência:** `services/photo.ts:15-21` sempre reencoda/comprime, mas `tickets/new.tsx` não valida o limite real de 10 MB antes do POST (o guard de 25 MB só é usado no OCR de faturas). Na prática a compressão evita o estouro; caso extremo depende do 400 do servidor.
 - **Depende de:** nada.
@@ -218,13 +218,12 @@
 - **Depende de:** 🖥️ release de padronização.
 - **Ação:** deixar para um release de padronização do backend.
 
-**ISS-028 · `PLANO_USINAS_SEM_GERACAO.md` sumido sem rastro** — `Baixa` · — · 🛠️ · 🔴 Aberto
+**ISS-028 · `PLANO_USINAS_SEM_GERACAO.md` sumido sem rastro** — `Baixa` · — · 🛠️ · 🟢 Resolvido — ignorado (decisão)
 - **Categoria:** governança/doc
-- **Evidência:** aparecia como untracked no `git status` inicial; **não existe mais** no disco nem no git (provável rascunho da issue #39 — usinas que nunca geraram).
-- **Depende de:** nada.
-- **Ação:** recriar/commitar se o conteúdo importava; senão, ignorar.
+- **Evidência:** era um rascunho **untracked** (nunca commitado), provável esboço da issue #39 (usinas que nunca geraram); não existe mais no disco nem no git.
+- **Resolução (22/08):** **ignorado** — não recriar. Nada de valor foi perdido (nunca esteve versionado). O tema #39 (usinas sem geração / expectativa fleet-wide) já é rastreado em **ISS-016** (confirmação de deploy do backend).
 
-**ISS-029 · Documentação desatualizada (contagem de testes)** — `Baixa` · Fase A · 🛠️ · 🔴 Aberto
+**ISS-029 · Documentação desatualizada (contagem de testes)** — `Baixa` · Fase A · 🛠️ · 🟢 Corrigido (Lote 1) — `PLANO_IMPLANTACAO_V2.md` atualizado (9 suítes, ~133 testes em 22/08).
 - **Categoria:** governança/doc
 - **Evidência:** `PLANO_IMPLANTACAO_V2.md` §3 A1 diz "74 testes em 5 suítes"; existem **9 suítes** (adicionadas alert/session/support/error-envelope).
 - **Depende de:** nada.
@@ -295,7 +294,7 @@ Cada entrada rastreia **Correção** e **Em produção** (ver convenção no §1
 
 ### Follow-up de decisão (surgiu da confirmação do contrato — não é um dos 8 fixes)
 
-**ISS-039 · Fonte e granularidade do selo "Atenção" da usina** — `Média` · Fase C · 🛠️ · 🟡 Decidido, aguardando implementação
+**ISS-039 · Fonte e granularidade do selo "Atenção" da usina** — `Média` · Fase C · 🛠️ · 🟢 Corrigido (Lote 1) · Em produção: ⏳ — selo agora distingue **Atenção (warning/âmbar)** de **Crítico (error/vermelho)** pelo enum `status`; `plantStatus` mapeia pelo enum (aposentado o `includes('erro')` frágil); offline vira neutro/cinza. +4 testes. Fonte = portal (decisão do cliente). ⚠️ falta conferência visual no aparelho e validar com usina real warning/error quando vinculada.
 - **Categoria:** decisão de produto / fidelidade
 - **Contexto (backend 22/08):** o selo lê `temAlerta` = **status do portal do fabricante** (`status !== 'ok'`); existe uma segunda fonte (Central de Alertas `/alertas`) que pode discordar; `status` é `'ok'|'warning'|'error'`.
 - **Decisão do cliente (22/08):** **(1) fonte = portal do fabricante** (mantém `status`/`temAlerta`, NÃO o feed); **(2) distinguir Atenção (warning/amarelo) de Crítico (error/vermelho)**.

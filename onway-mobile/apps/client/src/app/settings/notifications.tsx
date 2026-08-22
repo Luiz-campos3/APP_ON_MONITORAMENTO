@@ -7,8 +7,10 @@ import { brand, spacing } from '@/constants/theme';
 import { type NotificationPreferences, useClientApp } from '@/contexts/client-app-context';
 import { useOnWayTheme } from '@/contexts/theme-context';
 
-// Apenas as categorias que têm efeito real hoje: elas filtram os alertas
-// exibidos no app. Relatório mensal e atendimento entram junto com o push.
+// Preferências que ainda NÃO têm efeito no feed: hoje não filtram os alertas
+// exibidos na Central de Alertas. Vão reger as notificações push quando o
+// contrato de push + preferências existir. Relatório mensal e atendimento
+// entram junto com o push.
 const options: { key: keyof NotificationPreferences; title: string; description: string }[] = [
   { key: 'plantOffline', title: 'Usina offline', description: 'Avise quando uma unidade parar de enviar dados.' },
   { key: 'lowGeneration', title: 'Baixa geração', description: 'Receba alertas de desempenho abaixo do esperado.' },
@@ -41,7 +43,7 @@ export default function NotificationsScreen() {
         ))}
       </Card>
       <Text style={[styles.saved, { color: colors.textSecondary }]}>
-        Preferências salvas neste aparelho e aplicadas aos alertas exibidos no app. Notificações push chegarão em uma próxima versão.
+        Preferências salvas neste aparelho. Vão controlar as notificações push quando esse recurso chegar — por enquanto não filtram os alertas já exibidos na Central de Alertas.
       </Text>
     </Screen>
   );

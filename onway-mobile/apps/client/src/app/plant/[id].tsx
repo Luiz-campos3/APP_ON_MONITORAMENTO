@@ -64,7 +64,11 @@ export default function PlantDetailScreen() {
 
   const monthlyPercentage = forecastPercentage(plant);
   const status = statusLabel(plant.status).toUpperCase();
-  const statusColor = plant.status === 'online' ? '#6BE1B3' : plant.status === 'attention' ? brand.warning : brand.danger;
+  const statusColor =
+    plant.status === 'online' ? '#6BE1B3'
+    : plant.status === 'attention' ? brand.warning
+    : plant.status === 'critical' ? brand.danger
+    : colors.textSecondary;
   const generationToday = todayHistory.data?.total ?? plant.generationToday;
 
   return (
