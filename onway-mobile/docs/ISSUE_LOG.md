@@ -122,11 +122,9 @@
 
 ### 🟨 Médias
 
-**ISS-012 · Branches staged colidem e estão atrás da `main`** — `Média` · Fase D · 🛠️ · 🟡 Parcial (2 de 3 mergeados)
+**ISS-012 · Branches staged colidem e estão atrás da `main`** — `Média` · Fase D · 🛠️ · 🟢 Resolvido
 - **Categoria:** staged/merge
-- **Evidência/estado:** `fix/historico-ano` (`123b8ef`) e `feat/acessibilidade` (`ac6f31b`) **mergeados** na `main` sem conflito (auto-merge `ort` — regiões distintas das mudanças de fidelidade). Resta **`feat/exclusao-conta`**, segurado (depende do deploy do PR #42 — ISS-003/007). Ao mergear a exclusão, resolver o `privacy.tsx` (que ela também edita) uma vez.
-- **Depende de:** deploy do PR #42 (backend) para liberar o último merge.
-- **Ação:** após #42 + validação, rebasear/mergear `feat/exclusao-conta` e fechar esta issue.
+- **Resolução (22/08):** os **3 branches mergeados** na `main` sem conflito (auto-merge `ort`) e removidos: `fix/historico-ano` (`123b8ef`), `feat/acessibilidade` (`ac6f31b`), `feat/exclusao-conta` (`36ba1a2`). **Nenhum branch aberto** — `main` é a única. Gate verde após cada merge.
 
 **ISS-013 · Cobertura de testes: cliente HTTP, contexts e strip de EXIF sem teste** — `Média` · transversal · 🛠️ · 🔴 Aberto
 - **Categoria:** teste-faltante
@@ -297,12 +295,12 @@ Cada entrada rastreia **Correção** e **Em produção** (ver convenção no §1
 
 ### Follow-up de decisão (surgiu da confirmação do contrato — não é um dos 8 fixes)
 
-**ISS-039 · Fonte e granularidade do selo "Atenção" da usina** — `Média` · Fase C · 👤🛠️ · 🔴 Aberto (decisão de produto)
+**ISS-039 · Fonte e granularidade do selo "Atenção" da usina** — `Média` · Fase C · 🛠️ · 🟡 Decidido, aguardando implementação
 - **Categoria:** decisão de produto / fidelidade
-- **Contexto (backend 22/08):** hoje o selo lê `temAlerta` = **status do portal do fabricante** (`status !== 'ok'`). Existe uma **segunda fonte**, a Central de Alertas (`/alertas`), e as duas **podem discordar** — `baixa_geracao`/`sem_comunicacao` do feed **não** acendem `temAlerta`. Além disso, `status` é `'ok'|'warning'|'error'`, permitindo distinguir **atenção (warning)** de **crítico (error)** sem campo novo.
-- **Decisões:** (1) o selo deve refletir o **portal** (atual) ou o **feed** da Central de Alertas? (2) distinguir warning/error (amarelo/vermelho) no selo? (3) robustecer `plantStatus` para usar o enum `status` em vez do `includes('erro')` frágil.
-- **Depende de:** 👤 decisão de produto (1 e 2) → 🛠️ implementação.
-- **Ação:** decidir a fonte canônica do selo e a granularidade; então ajustar `plantStatus`.
+- **Contexto (backend 22/08):** o selo lê `temAlerta` = **status do portal do fabricante** (`status !== 'ok'`); existe uma segunda fonte (Central de Alertas `/alertas`) que pode discordar; `status` é `'ok'|'warning'|'error'`.
+- **Decisão do cliente (22/08):** **(1) fonte = portal do fabricante** (mantém `status`/`temAlerta`, NÃO o feed); **(2) distinguir Atenção (warning/amarelo) de Crítico (error/vermelho)**.
+- **Implementação (app-side, pendente):** adicionar `'critical'` ao `PlantStatus`; `plantStatus` passa a mapear pelo **enum `status`** (`error`→critical, `warning`→attention, offline por `monitoramentoAtivo`/`error` de comunicação), aposentando o `includes('erro')` frágil; propagar cor/rótulo (Home, lista, detalhe). Sem dependência externa.
+- **Ação:** implementar (🛠️, ver "próximos itens").
 
 ---
 
