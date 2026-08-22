@@ -278,20 +278,22 @@ Cada entrada rastreia **Correção** e **Em produção** (ver convenção no §1
 - **Correção:** versão lida do build via `Constants.expoConfig?.version` (`expo-constants`), com fallback seguro.
 - **Em produção:** ⏳ pendente de build.
 
-**ISS-036 · Alertas: rótulo de tempo ambíguo em alertas derivados** — `Baixa` · Fase C · 🛠️ · 🔴 Aberto
+**ISS-036 · Alertas: rótulo de tempo ambíguo em alertas derivados** — `Baixa` · Fase C · 🛠️ · 🟢 Corrigido (`24cbdc2`, `main`) · Em produção: ⏳
 - **Categoria:** derivado-que-engana
-- **Evidência:** `alerts.tsx:86` mostra "há Xh" de `api.abertoEm`; para `origem:'derivado'`, `abertoEm` é a **última geração**, não a abertura (`mobile-api.ts:610`, contrato `INTEGRACAO_BACKEND.md:347`). "há 5h" lê como "aberto há 5h" quando é "última geração há 5h".
-- **Ação:** distinguir na UI (ex.: "última leitura há Xh" para derivados) ou pedir ao backend um timestamp de abertura real.
+- **Evidência:** `alerts.tsx:86` mostrava "há Xh" de `api.abertoEm`; para `origem:'derivado'`, `abertoEm` é a **última geração**, não a abertura (`mobile-api.ts:610`, contrato `INTEGRACAO_BACKEND.md:347`).
+- **Correção:** `timeLabel` (em `domain/alert.ts`) virou origin-aware — `derivado` → "última leitura há Xh"; `tabela` → "há Xh". +3 testes. `alerts.tsx` inalterado (só renderiza o label). Sem afirmar "aberto há Xh" onde não é.
+- **Em produção:** ⏳ pendente de build.
 
 **ISS-037 · "% da previsão" tem viés levemente otimista** — `Baixa` (informativo) · Fase C · 🛠️ · 🔴 Aberto
 - **Categoria:** derivado (documentado)
 - **Evidência:** `client.ts:246-257` — numerador `geracaoMesKwh` (mês-até-hoje, inclui hoje) sobre denominador `expectativaMesAteHojeKwh` (até ontem). Descompasso intencional/documentado, mas infla o % no começo do mês (pode passar de 100%).
 - **Ação:** aceitar (é honesto e explicado) ou alinhar as janelas com o backend. Baixa prioridade.
 
-**ISS-038 · Timeline do chamado: todos os marcos em verde/check** — `Baixa` · Fase B · 🛠️ · 🔴 Aberto
+**ISS-038 · Timeline do chamado: todos os marcos em verde/check** — `Baixa` · Fase B · 🛠️ · 🟢 Corrigido (`24cbdc2`, `main`) · Em produção: ⏳
 - **Categoria:** derivado (decoração local)
-- **Evidência:** `tickets/[id].tsx:126-142` pinta todo evento como concluído; título/data são reais (backend), mas o backend não manda status por evento. Sugere "etapa aprovada" onde é só "etapa registrada".
-- **Ação:** neutralizar o estilo (não afirmar "concluído") ou pedir status por evento ao backend.
+- **Evidência:** `tickets/[id].tsx:126-142` pintava todo evento como concluído (verde + check); título/data são reais (backend), mas o backend não manda status por evento.
+- **Correção:** o marcador virou um ponto **neutro** (accent, sem check) — a timeline mostra eventos registrados em ordem, sem afirmar "aprovado/concluído". Título/data seguem reais.
+- **Em produção:** ⏳ pendente de build.
 
 ---
 
