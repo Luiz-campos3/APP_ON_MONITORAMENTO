@@ -210,11 +210,14 @@ export function toGenerationHistory(response: PlantHistoryResponse, period: Hist
       ? hourlyLabels(values.length)
       : values.map((_, index) => response.historico.customLabels[index] || String(index + 1));
   } else if (period === 'year') {
-    // O modo Ano mostra sempre 12 meses. Usa a série `ano` quando preenchida;
-    // caso contrário, agrega a série diária em totais mensais reais (nunca a
-    // série diária crua, que traria centenas de barras).
+    // O modo Ano mostra sempre 12 meses. A navegação de ano envia inicio/fim e o
+    // backend devolve a série ESPECÍFICA daquele ano em `custom` (diária, a partir
+    // de 1º/jan), que agregamos em 12 totais mensais reais. A série `ano` é a visão
+    // DEFAULT do ano corrente e é INSENSÍVEL ao range (validado em produção:
+    // idêntica para 2024/2025/2026), por isso só serve de fallback quando não há
+    // range ativo. Sem esse cuidado, todo ano navegado exibiria o ano corrente.
     const yearly = response.historico.ano.map(numeric);
-    values = yearly.some((value) => value > 0) ? yearly : monthlyFromDaily(customValues, targetDate);
+    values = hasCustomRange ? monthlyFromDaily(customValues, targetDate) : yearly;
     labels = values.map((_, index) => response.historico.anoLabels[index] || String(index + 1));
   } else if (hasCustomRange) {
     values = customValues;

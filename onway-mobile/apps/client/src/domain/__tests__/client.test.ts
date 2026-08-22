@@ -196,16 +196,33 @@ describe('toGenerationHistory', () => {
     expect(result.labels[0]).toBe('Jan');
   });
 
-  it('ano: agrega a série diária em meses quando a anual vem zerada', () => {
+  it('ano: a série do range (custom) tem precedência sobre a série anual default', () => {
+    // Produção: `ano` é sempre o ano corrente (insensível ao range); o ano pedido
+    // chega em `custom` (diária, a partir de 1º/jan). Deve agregar `custom` em 12
+    // meses reais, mesmo com `ano` preenchido — senão todo ano exibiria o corrente.
     const response = history({
-      ano: new Array(12).fill(0),
+      ano: new Array(12).fill(99),
       custom: [1, 2, 3],
       customLabels: ['01/01', '02/01', '03/01'],
     });
     const result = toGenerationHistory(response, 'year', '2026-01-01');
     expect(result.values).toHaveLength(12);
-    expect(result.values[0]).toBe(6);
-    expect(result.total).toBe(6);
+    expect(result.values[0]).toBe(6); // jan = 1+2+3 (primeiros dias)
+    expect(result.total).toBe(6); // não 99*12 da série `ano`
+  });
+
+  it('ano: navegar para um ano sem geração mostra zeros, não os dados do ano corrente', () => {
+    // Regressão do bug: `ano` traz o ano corrente com dados; o ano pedido (custom)
+    // vem zerado. Antes, o mapper exibia `ano` e "os dados permaneciam os mesmos".
+    const response = history({
+      ano: [10, 20, 30, 40, 0, 0, 0, 0, 0, 0, 0, 0],
+      anoLabels: ['jan/26'],
+      custom: new Array(365).fill(0),
+      customLabels: ['01/01'],
+    });
+    const result = toGenerationHistory(response, 'year', '2025-01-01');
+    expect(result.values).toEqual(new Array(12).fill(0));
+    expect(result.total).toBe(0);
   });
 
   it('mês: série custom tem precedência quando presente', () => {
