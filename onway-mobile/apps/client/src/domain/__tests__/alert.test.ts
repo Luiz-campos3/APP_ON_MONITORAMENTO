@@ -67,6 +67,22 @@ describe('toAlert', () => {
     expect(alert.origin).toBe('derivado');
     expect(alert.tone).toBe('danger');
   });
+
+  it('em tabela, timeLabel é a forma relativa crua (sem prefixo)', () => {
+    // abertoEm padrão = 2h antes de NOW
+    const alert = toAlert(apiAlert({ origem: 'tabela' }), NOW);
+    expect(alert.timeLabel).toBe('há 2 h');
+  });
+
+  it('em derivado, timeLabel prefixa "última leitura" (abertoEm = última leitura, não abertura)', () => {
+    const alert = toAlert(apiAlert({ origem: 'derivado' }), NOW);
+    expect(alert.timeLabel).toBe('última leitura há 2 h');
+    expect(alert.timeLabel.startsWith('última leitura ')).toBe(true);
+  });
+
+  it('sem abertoEm, timeLabel fica vazio mesmo em derivado (sem prefixo)', () => {
+    expect(toAlert(apiAlert({ origem: 'derivado', abertoEm: null }), NOW).timeLabel).toBe('');
+  });
 });
 
 describe('alertTimeLabel', () => {

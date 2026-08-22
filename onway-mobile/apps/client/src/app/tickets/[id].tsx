@@ -128,9 +128,7 @@ export default function TicketDetailScreen() {
             return (
               <View key={`${event.title}-${index}`} style={styles.step}>
                 <View style={styles.stepRail}>
-                  <View style={[styles.stepDot, { backgroundColor: brand.green, borderColor: brand.green }]}>
-                    <SymbolIcon ios="checkmark" android="check" color={brand.white} size={13} fallback="✓" />
-                  </View>
+                  <View style={[styles.stepDot, { backgroundColor: colors.accent, borderColor: colors.accent }]} />
                   {!last ? <View style={[styles.stepLine, { backgroundColor: colors.border }]} /> : null}
                 </View>
                 <View style={styles.stepBody}>
@@ -184,7 +182,7 @@ const styles = StyleSheet.create({
   placeholderText: { fontSize: 12, textAlign: 'center' },
   step: { flexDirection: 'row', gap: spacing.md },
   stepRail: { alignItems: 'center', width: 30 },
-  stepDot: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  stepDot: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, marginTop: 4 },
   stepLine: { width: 2, flex: 1, minHeight: 20, marginVertical: 2 },
   stepBody: { flex: 1, paddingBottom: spacing.xl, gap: 3 },
   stepTitle: { fontSize: 14, fontWeight: '800' },

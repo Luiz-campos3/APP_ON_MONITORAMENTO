@@ -21,7 +21,11 @@ export type Alert = {
   read: boolean;
   openedAt: string | null;
   resolvedAt: string | null;
-  /** Rótulo de tempo relativo do `abertoEm` (no derivado = última geração). */
+  /**
+   * Rótulo de tempo do `abertoEm`. Em `tabela` é a forma relativa crua ("há 5 h");
+   * em `derivado` o `abertoEm` é a última leitura/geração, então vem prefixado
+   * ("última leitura há 5 h") — o app não afirma quando o alerta foi aberto.
+   */
   timeLabel: string;
   icon: AlertIcon;
 };
@@ -79,6 +83,9 @@ export function alertTimeLabel(iso: string | null, now: number): string {
 }
 
 export function toAlert(api: ApiAlert, now: number): Alert {
+  // No `derivado`, `abertoEm` é a última leitura/geração — não quando o alerta abriu.
+  // Prefixamos para não afirmar mais do que o dado diz. Vazio permanece vazio.
+  const relative = alertTimeLabel(api.abertoEm, now);
   return {
     id: api.id,
     plantId: api.usinaId,
@@ -93,7 +100,7 @@ export function toAlert(api: ApiAlert, now: number): Alert {
     read: api.lido,
     openedAt: api.abertoEm,
     resolvedAt: api.resolvidoEm,
-    timeLabel: alertTimeLabel(api.abertoEm, now),
+    timeLabel: relative && api.origem === 'derivado' ? `última leitura ${relative}` : relative,
     icon: alertIcon(api.tipo),
   };
 }
