@@ -78,8 +78,10 @@ function plantStatus(plant: ApiPlant): PlantStatus {
     || status.includes('sem dado')
   ) return 'offline';
 
+  const flagged = plant.temAlerta ?? plant.alerta ?? false;
+
   if (
-    plant.alerta
+    flagged
     || status.includes('alert')
     || status.includes('atenc')
     || status.includes('falha')
@@ -119,7 +121,7 @@ export function toPlant(plant: ApiPlant): Plant {
     name: normalizeText(plant.nome) || 'Usina sem nome',
     city: normalizeText(plant.cidade) || 'Localização não informada',
     status: plantStatus(plant),
-    hasAlert: plant.alerta,
+    hasAlert: plant.temAlerta ?? plant.alerta ?? false,
     monitoringActive: plant.monitoramentoAtivo,
     powerKwp: numeric(plant.potenciaKwp),
     generationToday: firstNumeric(

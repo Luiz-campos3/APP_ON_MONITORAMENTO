@@ -19,7 +19,7 @@ function apiPlant(overrides: Partial<ApiPlant> = {}): ApiPlant {
     cidade: 'Goiânia',
     fabricante: null,
     status: 'Normal',
-    alerta: false,
+    temAlerta: false,
     monitoramentoAtivo: true,
     potenciaKwp: 12.5,
     potenciaPlacaKwp: null,
@@ -96,8 +96,12 @@ describe('toPlant', () => {
     expect(toPlant(apiPlant({ status })).status).toBe('attention');
   });
 
-  it('mapeia flag alerta para attention mesmo com status normal', () => {
-    expect(toPlant(apiPlant({ alerta: true })).status).toBe('attention');
+  it('mapeia flag temAlerta para attention mesmo com status normal', () => {
+    expect(toPlant(apiPlant({ temAlerta: true })).status).toBe('attention');
+  });
+
+  it('fallback legado: sem temAlerta, usa alerta=true para attention', () => {
+    expect(toPlant(apiPlant({ temAlerta: undefined, alerta: true })).status).toBe('attention');
   });
 
   it('mapeia status saudável para online', () => {

@@ -51,7 +51,10 @@ export type ApiPlant = {
   cidade: string | null;
   fabricante: string | null;
   status: string | null;
-  alerta: boolean;
+  // Produção envia `temAlerta`/`alertaMensagem`; `alerta` é legado (pode não vir).
+  temAlerta?: boolean;
+  alertaMensagem?: string | null;
+  alerta?: boolean;
   monitoramentoAtivo: boolean;
   potenciaKwp: number | null;
   potenciaPlacaKwp: number | null;

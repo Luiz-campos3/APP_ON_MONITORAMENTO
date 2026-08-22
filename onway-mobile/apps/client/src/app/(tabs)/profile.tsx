@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useState } from 'react';
@@ -6,7 +7,7 @@ import { AppHeader } from '@/components/app-header';
 import { Screen } from '@/components/screen';
 import { SymbolIcon } from '@/components/symbol-icon';
 import { Button, Card } from '@/components/ui';
-import { brand, radius, spacing } from '@/constants/theme';
+import { brand, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { type ThemePreference, useOnWayTheme } from '@/contexts/theme-context';
 
@@ -15,6 +16,8 @@ const themeOptions: { value: ThemePreference; label: string }[] = [
   { value: 'light', label: 'Claro' },
   { value: 'dark', label: 'Escuro' },
 ];
+
+const appVersion = Constants.expoConfig?.version;
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -49,7 +52,6 @@ export default function ProfileScreen() {
         <View style={styles.profileBody}>
           <Text style={[styles.name, { color: colors.text }]}>{name}</Text>
           <Text style={[styles.email, { color: colors.textSecondary }]}>{email}</Text>
-          <View style={[styles.accountPill, { backgroundColor: colors.accentSoft }]}><Text style={[styles.accountPillText, { color: colors.accent }]}>Cliente ativo</Text></View>
         </View>
       </Card>
 
@@ -97,7 +99,7 @@ export default function ProfileScreen() {
       <View style={styles.logout}>
         <Button label="Sair da conta" variant="secondary" loading={loggingOut} onPress={handleLogout} icon={<SymbolIcon ios="rectangle.portrait.and.arrow.right" android="logout" color={brand.danger} size={20} fallback="→" />} />
       </View>
-      <Text style={[styles.version, { color: colors.textSecondary }]}>OnWay Cliente · versão 0.1.0</Text>
+      <Text style={[styles.version, { color: colors.textSecondary }]}>{appVersion ? `OnWay Cliente · versão ${appVersion}` : 'OnWay Cliente'}</Text>
     </Screen>
   );
 }
@@ -121,8 +123,6 @@ const styles = StyleSheet.create({
   profileBody: { flex: 1 },
   name: { fontSize: 18, fontWeight: '800' },
   email: { fontSize: 12, marginTop: 3 },
-  accountPill: { alignSelf: 'flex-start', borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 4, marginTop: 8 },
-  accountPillText: { fontSize: 9, fontWeight: '800' },
   passwordWarning: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: spacing.md },
   warningBody: { flex: 1 },
   warningTitle: { fontSize: 13, fontWeight: '800' },
